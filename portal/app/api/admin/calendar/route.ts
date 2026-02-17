@@ -16,13 +16,13 @@ const bodySchema = z.object({
 
 export async function GET() {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
   return runPortalAction({ action: "portal.getCalendar", actor });
 }
 
 export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const parsed = bodySchema.safeParse(await req.json());
   if (!parsed.success) {

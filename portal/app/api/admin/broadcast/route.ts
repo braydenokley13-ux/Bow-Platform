@@ -3,14 +3,9 @@ import { badRequest } from "@/lib/api-response";
 import { requireAdminActor } from "@/lib/route-auth";
 import { runPortalAction } from "@/lib/portal-route";
 
-const bodySchema = z.object({}).passthrough();
-
-export async function GET() {
-  const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error!;
-
-  return runPortalAction({ action: "portal.admin.getDraftPrograms", actor });
-}
+const bodySchema = z.object({
+  message: z.string().min(1).max(2000)
+});
 
 export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
@@ -18,12 +13,12 @@ export async function POST(req: Request) {
 
   const parsed = bodySchema.safeParse(await req.json());
   if (!parsed.success) {
-    return badRequest("Invalid program payload", "INVALID_PAYLOAD", parsed.error.flatten());
+    return badRequest("Invalid broadcast payload", "INVALID_PAYLOAD", parsed.error.flatten());
   }
 
   return runPortalAction({
-    action: "portal.admin.createDraftProgram",
+    action: "portal.admin.broadcastMessage",
     actor,
-    data: parsed.data
+    data: { message: parsed.data.message }
   });
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
@@ -187,7 +186,7 @@ export default function StudentDashboardPage() {
               <article key={`${action.href}-${idx}`} className="card" style={{ padding: 12 }}>
                 <div style={{ fontWeight: 700 }}>{action.title}</div>
                 <div style={{ marginTop: 8 }}>
-                  <Link href={action.href}>Open</Link>
+                  <a href={action.href}>Open</a>
                 </div>
               </article>
             ))}

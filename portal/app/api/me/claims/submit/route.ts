@@ -14,7 +14,7 @@ const claimSchema = z.object({
 
 export async function POST(req: Request) {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const parsed = claimSchema.safeParse(await req.json());
   if (!parsed.success) {

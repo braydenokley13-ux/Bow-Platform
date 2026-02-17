@@ -20,6 +20,7 @@ const studentLinks = [
   ["Calendar", "/calendar"],
   ["Chat", "/chat"],
   ["Raffles", "/raffles"],
+  ["Roadmap", "/roadmap"],
   ["Notifications", "/notifications"],
   ["Help", "/help"],
   ["History", "/history"],
@@ -28,6 +29,7 @@ const studentLinks = [
 
 const adminLinks = [
   ["Overview", "/admin/overview"],
+  ["Analytics", "/admin/analytics"],
   ["Launch", "/admin/launch"],
   ["Seasons", "/admin/seasons"],
   ["Events", "/admin/events"],
@@ -52,6 +54,7 @@ const adminLinks = [
   ["Negotiation", "/admin/negotiation/scorecards"],
   ["Journal Review", "/admin/journal/review"],
   ["Students", "/admin/students"],
+  ["Broadcast", "/admin/broadcast"],
   ["Support", "/admin/support"],
   ["Invites", "/admin/invites"],
   ["Action Queue", "/admin/action-queue"],

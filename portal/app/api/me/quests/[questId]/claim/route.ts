@@ -4,7 +4,7 @@ import { runPortalAction } from "@/lib/portal-route";
 
 export async function POST(_req: Request, ctx: { params: Promise<{ questId: string }> }) {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const params = await ctx.params;
   const questId = String(params.questId || "").trim();

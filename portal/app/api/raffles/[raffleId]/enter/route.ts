@@ -9,7 +9,7 @@ const bodySchema = z.object({
 
 export async function POST(req: Request, ctx: { params: Promise<{ raffleId: string }> }) {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const body = bodySchema.safeParse(await req.json());
   if (!body.success) {

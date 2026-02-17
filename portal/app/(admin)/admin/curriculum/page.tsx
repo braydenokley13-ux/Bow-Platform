@@ -40,6 +40,7 @@ export default function AdminCurriculumHomePage() {
 
   const [publishNotes, setPublishNotes] = useState("Publish from Curriculum Studio");
   const [rollbackBatchId, setRollbackBatchId] = useState("");
+  const [confirmPublish, setConfirmPublish] = useState(false);
 
   const [reorderEntity, setReorderEntity] = useState("modules");
   const [reorderIds, setReorderIds] = useState("");
@@ -198,8 +199,22 @@ export default function AdminCurriculumHomePage() {
           Publish Notes
           <input value={publishNotes} onChange={(e) => setPublishNotes(e.target.value)} />
         </label>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => void publishNow()}>Publish Draft -> Student</button>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {confirmPublish ? (
+            <>
+              <span className="pill">Confirm publish to students?</span>
+              <button onClick={() => { void publishNow(); setConfirmPublish(false); }}>
+                Yes, Publish Draft {"->"} Student
+              </button>
+              <button className="secondary" onClick={() => setConfirmPublish(false)}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button onClick={() => setConfirmPublish(true)}>
+              Publish Draft {"->"} Student
+            </button>
+          )}
         </div>
 
         <label>
