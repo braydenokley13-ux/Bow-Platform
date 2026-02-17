@@ -12,6 +12,9 @@ export default function HomePage() {
       </section>
 
       <section className="grid grid-2">
+        <Link className="card" href="/home">
+          Daily home feed
+        </Link>
         <Link className="card" href="/onboarding">
           Student onboarding checklist
         </Link>
@@ -23,6 +26,15 @@ export default function HomePage() {
         </Link>
         <Link className="card" href="/claim">
           Claim center
+        </Link>
+        <Link className="card" href="/events">
+          Live events
+        </Link>
+        <Link className="card" href="/pods">
+          Team pods
+        </Link>
+        <Link className="card" href="/quests">
+          Quests and rewards
         </Link>
         <Link className="card" href="/raffles">
           Raffle center

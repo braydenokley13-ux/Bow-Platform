@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
@@ -29,6 +30,27 @@ interface DashboardPayload {
       available: number;
       formula: string;
     };
+    season?: {
+      season_id: string;
+      title: string;
+      starts_at?: string;
+      ends_at?: string;
+      status?: string;
+    } | null;
+    league?: {
+      individual_rank: number;
+      individual_points: number;
+      leaderboard_top: Array<{
+        rank: number;
+        email: string;
+        display_name?: string;
+        points: number;
+      }>;
+    };
+    quick_actions?: Array<{
+      title: string;
+      href: string;
+    }>;
     notifications: Array<{
       notification_id: string;
       title: string;
@@ -136,6 +158,43 @@ export default function StudentDashboardPage() {
             {payload?.data.raffle_tickets.formula || ""}
           </p>
         </article>
+      </section>
+
+      <section className="grid grid-2">
+        <article className="card">
+          <div className="kicker">Season</div>
+          <h2 style={{ margin: "8px 0" }}>{payload?.data.season?.title || "No active season"}</h2>
+          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
+            {payload?.data.season?.status || "-"}
+          </p>
+        </article>
+        <article className="card">
+          <div className="kicker">League Rank</div>
+          <h2 style={{ margin: "8px 0" }}>
+            {payload?.data.league?.individual_rank ? `#${payload?.data.league?.individual_rank}` : "Not ranked"}
+          </h2>
+          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
+            Points: {payload?.data.league?.individual_points ?? 0}
+          </p>
+        </article>
+      </section>
+
+      <section className="card" style={{ display: "grid", gap: 10 }}>
+        <h2 style={{ margin: 0, fontSize: 18 }}>Quick Actions</h2>
+        {(payload?.data.quick_actions || []).length ? (
+          <div className="grid grid-2">
+            {(payload?.data.quick_actions || []).map((action, idx) => (
+              <article key={`${action.href}-${idx}`} className="card" style={{ padding: 12 }}>
+                <div style={{ fontWeight: 700 }}>{action.title}</div>
+                <div style={{ marginTop: 8 }}>
+                  <Link href={action.href}>Open</Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p style={{ margin: 0 }}>No quick actions right now.</p>
+        )}
       </section>
 
       <section className="card" style={{ display: "grid", gap: 10 }}>

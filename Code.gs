@@ -451,6 +451,145 @@ const SHEET_SCHEMAS = {
     'next_steps',
     'enabled',
     'sort_order'
+  ],
+  Request_Dedupe: [
+    'request_id',
+    'action',
+    'actor_email',
+    'status',
+    'created_at',
+    'response_hash'
+  ],
+  Rate_Limits: [
+    'email',
+    'action',
+    'window_key',
+    'count',
+    'updated_at'
+  ],
+  Content_Validation_Log: [
+    'ts',
+    'severity',
+    'entity',
+    'entity_id',
+    'issue_code',
+    'details_json'
+  ],
+  Analytics_Snapshots: [
+    'ts',
+    'student_email',
+    'xp_velocity_7d',
+    'claim_fail_rate_7d',
+    'rubric_overall_avg',
+    'risk_tier',
+    'drivers_json'
+  ],
+  Seasons: [
+    'season_id',
+    'title',
+    'starts_at',
+    'ends_at',
+    'status',
+    'created_by',
+    'created_at'
+  ],
+  League_Points_Ledger: [
+    'ts',
+    'season_id',
+    'scope',
+    'email',
+    'pod_id',
+    'delta_points',
+    'reason',
+    'source_ref',
+    'balance_after'
+  ],
+  Pods: [
+    'pod_id',
+    'name',
+    'season_id',
+    'status',
+    'created_at',
+    'created_by'
+  ],
+  Pod_Members: [
+    'pod_id',
+    'email',
+    'joined_at',
+    'left_at',
+    'status'
+  ],
+  Pod_Kudos: [
+    'kudos_id',
+    'pod_id',
+    'from_email',
+    'to_email',
+    'message',
+    'created_at'
+  ],
+  Live_Events: [
+    'event_id',
+    'season_id',
+    'title',
+    'description',
+    'track',
+    'module',
+    'open_at',
+    'close_at',
+    'rules_json',
+    'status',
+    'created_by',
+    'created_at'
+  ],
+  Event_Submissions: [
+    'submission_id',
+    'event_id',
+    'email',
+    'claim_code',
+    'score',
+    'status',
+    'submitted_at',
+    'reviewed_at',
+    'reviewed_by',
+    'notes'
+  ],
+  Quest_Catalog: [
+    'quest_id',
+    'title',
+    'description',
+    'target_type',
+    'target_json',
+    'reward_points',
+    'reward_badge',
+    'difficulty',
+    'enabled',
+    'sort_order'
+  ],
+  Quest_Completions: [
+    'completion_id',
+    'quest_id',
+    'email',
+    'status',
+    'awarded_points',
+    'awarded_at',
+    'source_ref'
+  ],
+  Student_Engagement_State: [
+    'email',
+    'streak_days',
+    'streak_shield_uses_week',
+    'last_seen_at',
+    'favorite_role',
+    'weekly_goal_json'
+  ],
+  Engagement_Metrics_Daily: [
+    'date_key',
+    'active_students',
+    'claims_submitted',
+    'journals_submitted',
+    'events_participated',
+    'quests_completed',
+    'kudos_sent'
   ]
 };
 
@@ -667,7 +806,22 @@ function verifyCriticalSchema() {
     Users: ['email', 'display_name', 'xp', 'level', 'streak_days', 'last_active'],
     Templates: ['template_id', 'subject', 'html', 'enabled'],
     Level_Titles: ['level', 'xp_required', 'title'],
-    Credentials: ['pass_id', 'email', 'display_name', 'track', 'level', 'issued_at', 'status']
+    Credentials: ['pass_id', 'email', 'display_name', 'track', 'level', 'issued_at', 'status'],
+    Request_Dedupe: ['request_id', 'action', 'actor_email', 'status', 'created_at', 'response_hash'],
+    Rate_Limits: ['email', 'action', 'window_key', 'count', 'updated_at'],
+    Content_Validation_Log: ['ts', 'severity', 'entity', 'entity_id', 'issue_code', 'details_json'],
+    Analytics_Snapshots: ['ts', 'student_email', 'xp_velocity_7d', 'claim_fail_rate_7d', 'rubric_overall_avg', 'risk_tier', 'drivers_json'],
+    Seasons: ['season_id', 'title', 'status'],
+    League_Points_Ledger: ['ts', 'season_id', 'scope', 'delta_points', 'reason'],
+    Pods: ['pod_id', 'name', 'season_id', 'status'],
+    Pod_Members: ['pod_id', 'email', 'status'],
+    Pod_Kudos: ['kudos_id', 'pod_id', 'from_email', 'to_email', 'message', 'created_at'],
+    Live_Events: ['event_id', 'season_id', 'title', 'status'],
+    Event_Submissions: ['submission_id', 'event_id', 'email', 'claim_code', 'status'],
+    Quest_Catalog: ['quest_id', 'title', 'target_type', 'target_json', 'reward_points', 'enabled'],
+    Quest_Completions: ['completion_id', 'quest_id', 'email', 'status'],
+    Student_Engagement_State: ['email', 'last_seen_at'],
+    Engagement_Metrics_Daily: ['date_key', 'active_students']
   };
 
   const missing = [];

@@ -6,6 +6,32 @@
 const PORTAL_SHARED_SECRET_PROPERTY = 'PORTAL_SHARED_SECRET';
 const PORTAL_SIGNATURE_WINDOW_MS = 10 * 60 * 1000;
 const TICKETS_PER_XP = 100;
+const DEFAULT_POD_SIZE = 4;
+const LEAGUE_POINTS = {
+  CLAIM_ACCEPTED: 10,
+  JOURNAL_SUBMITTED: 5,
+  JOURNAL_HIGH_SCORE: 8,
+  EVENT_PARTICIPATION: 20,
+  EVENT_TOP_1: 20,
+  EVENT_TOP_2: 12,
+  EVENT_TOP_3: 8,
+  POD_KUDOS: 1
+};
+const PORTAL_IDEMPOTENT_ACTIONS = new Set([
+  'portal.submitClaim',
+  'portal.enterRaffle',
+  'portal.submitEventEntry',
+  'portal.claimQuestReward',
+  'portal.admin.publishCurriculum',
+  'portal.admin.rollbackCurriculum',
+  'portal.createJournalEntry',
+  'portal.admin.scoreJournalEntry',
+  'portal.sendPodKudos',
+  'portal.admin.createSeason',
+  'portal.admin.upsertEvent',
+  'portal.admin.assignPods',
+  'portal.admin.upsertQuest'
+]);
 
 function setPortalSharedSecret(secret) {
   const s = String(secret || '').trim();
@@ -213,6 +239,118 @@ function parseJsonSafe_(raw) {
   } catch (err) {
     return null;
   }
+}
+
+function digestBase64_(value) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(value || ''));
+  return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/g, '');
+}
+
+function getRequestDedupeRecord_(requestId, action, actorEmail) {
+  const rid = String(requestId || '').trim();
+  const act = String(action || '').trim();
+  const email = String(actorEmail || '').toLowerCase().trim();
+  if (!rid || !act) return null;
+
+  const d = readSheet('Request_Dedupe');
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const rowRequestId = String(getRowValue(row, d, 'request_id', '')).trim();
+    const rowAction = String(getRowValue(row, d, 'action', '')).trim();
+    const rowEmail = String(getRowValue(row, d, 'actor_email', '')).toLowerCase().trim();
+    if (rowRequestId !== rid) continue;
+    if (rowAction !== act) continue;
+    if (email && rowEmail && rowEmail !== email) continue;
+    return {
+      rowNum: i + 2,
+      request_id: rowRequestId,
+      action: rowAction,
+      actor_email: rowEmail,
+      status: upper(getRowValue(row, d, 'status', '')),
+      created_at: getRowValue(row, d, 'created_at', ''),
+      response_hash: String(getRowValue(row, d, 'response_hash', ''))
+    };
+  }
+  return null;
+}
+
+function markRequestDedupeInProgress_(requestId, action, actorEmail) {
+  appendObjectRow('Request_Dedupe', {
+    request_id: String(requestId || '').trim(),
+    action: String(action || '').trim(),
+    actor_email: String(actorEmail || '').toLowerCase().trim(),
+    status: 'IN_PROGRESS',
+    created_at: _now(),
+    response_hash: ''
+  });
+}
+
+function finalizeRequestDedupe_(requestId, action, actorEmail, status, responseObj) {
+  const record = getRequestDedupeRecord_(requestId, action, actorEmail);
+  const statusValue = upper(status || 'FAILED') || 'FAILED';
+  const hash = digestBase64_(safeStringify(responseObj || {}));
+
+  if (record) {
+    const d = readSheet('Request_Dedupe');
+    setCellByKey(d, record.rowNum, 'status', statusValue);
+    setCellByKey(d, record.rowNum, 'response_hash', hash);
+    return;
+  }
+
+  appendObjectRow('Request_Dedupe', {
+    request_id: String(requestId || '').trim(),
+    action: String(action || '').trim(),
+    actor_email: String(actorEmail || '').toLowerCase().trim(),
+    status: statusValue,
+    created_at: _now(),
+    response_hash: hash
+  });
+}
+
+function buildRateLimitWindowKey_(windowMinutes) {
+  const mins = Math.max(1, Number(windowMinutes || 1));
+  const now = new Date();
+  const bucket = Math.floor(now.getTime() / (mins * 60 * 1000));
+  return Utilities.formatDate(now, TZ, 'yyyyMMdd') + '-' + String(bucket);
+}
+
+function rateLimitAllowed_(email, actionKey, windowMinutes, maxCount) {
+  const actorEmail = String(email || '').toLowerCase().trim();
+  const act = String(actionKey || '').trim().toUpperCase();
+  const limit = Math.max(1, Number(maxCount || 1));
+  const key = buildRateLimitWindowKey_(windowMinutes);
+  const d = readSheet('Rate_Limits');
+
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const em = String(getRowValue(row, d, 'email', '')).toLowerCase().trim();
+    const a = upper(getRowValue(row, d, 'action', ''));
+    const wk = String(getRowValue(row, d, 'window_key', '')).trim();
+    if (em !== actorEmail || a !== act || wk !== key) continue;
+
+    const cur = Number(getRowValue(row, d, 'count', 0)) || 0;
+    if (cur >= limit) return false;
+    setCellByKey(d, i + 2, 'count', cur + 1);
+    setCellByKey(d, i + 2, 'updated_at', _now());
+    return true;
+  }
+
+  appendObjectRow('Rate_Limits', {
+    email: actorEmail,
+    action: act,
+    window_key: key,
+    count: 1,
+    updated_at: _now()
+  });
+  return true;
+}
+
+function rateLimitErr_(actionKey, windowMinutes, maxCount, message) {
+  return portalErr_('RATE_LIMITED', String(message || 'Too many requests. Please wait and retry.'), {
+    action: String(actionKey || ''),
+    window_minutes: Number(windowMinutes || 1),
+    max_count: Number(maxCount || 1)
+  });
 }
 
 function inferSupportPriority_(category, subject, message) {
@@ -911,6 +1049,9 @@ function actionGetMyJournalEntries_(payload) {
 
 function actionCreateJournalEntry_(payload) {
   const email = assertActorEmail_(payload);
+  if (!rateLimitAllowed_(email, 'JOURNAL_SUBMIT', 1, 1)) {
+    return rateLimitErr_('JOURNAL_SUBMIT', 1, 1, 'Journal submit limit reached. Please wait one minute.');
+  }
   const data = payload.data || {};
   const claimCode = normCode(data.claim_code || '');
   const role = String(data.role || '').trim();
@@ -945,14 +1086,26 @@ function actionCreateJournalEntry_(payload) {
     setCellByKey(d, existing._row_num, 'outcome_text', outcomeText);
     setCellByKey(d, existing._row_num, 'status', 'SUBMITTED');
     setCellByKey(d, existing._row_num, 'submitted_at', _now());
+
+    awardLeaguePointsForEmail_(
+      email,
+      LEAGUE_POINTS.JOURNAL_SUBMITTED,
+      'JOURNAL_SUBMITTED',
+      'JOURNAL:' + String(existing.entry_id || ''),
+      ''
+    );
+    incrementDailyEngagementMetric_('journals_submitted', 1);
+    touchStudentEngagement_(email, { favorite_role: role });
+
     return portalOk_('JOURNAL_UPDATED', 'Journal entry updated.', { entry_id: existing.entry_id, claim_code: claimCode });
   }
 
   const lessons = listSheetObjects_('Lessons_Published', false);
   const lessonRow = lessons.find(function(row) { return String(row.lesson_key || '') === lessonKey; }) || {};
 
+  const entryId = generateId_('JRN');
   appendObjectRow('Decision_Journal', {
-    entry_id: generateId_('JRN'),
+    entry_id: entryId,
     email: email,
     claim_code: claimCode,
     program_id: String(lessonRow.program_id || ''),
@@ -974,8 +1127,18 @@ function actionCreateJournalEntry_(payload) {
     coach_note: ''
   });
 
+  awardLeaguePointsForEmail_(
+    email,
+    LEAGUE_POINTS.JOURNAL_SUBMITTED,
+    'JOURNAL_SUBMITTED',
+    'JOURNAL:' + entryId,
+    ''
+  );
+  incrementDailyEngagementMetric_('journals_submitted', 1);
+  touchStudentEngagement_(email, { favorite_role: role });
+
   addNotification_(email, 'Journal entry submitted', 'Your decision journal entry for ' + claimCode + ' is awaiting instructor review.', 'JOURNAL');
-  return portalOk_('JOURNAL_CREATED', 'Journal entry submitted.', { claim_code: claimCode });
+  return portalOk_('JOURNAL_CREATED', 'Journal entry submitted.', { claim_code: claimCode, entry_id: entryId });
 }
 
 function actionAdminGetJournalReviewQueue_(payload) {
@@ -1020,6 +1183,17 @@ function actionAdminScoreJournalEntry_(payload) {
   setCellByKey(d, row._row_num, 'status', 'SCORED');
   setCellByKey(d, row._row_num, 'scored_at', _now());
   setCellByKey(d, row._row_num, 'scored_by', String(payload.actorEmail || '').toLowerCase());
+
+  const avgScore = Number(((s1 + s2 + s3 + s4) / 4).toFixed(2));
+  if (avgScore >= 4.0) {
+    awardLeaguePointsForEmail_(
+      String(row.email || '').toLowerCase(),
+      LEAGUE_POINTS.JOURNAL_HIGH_SCORE,
+      'JOURNAL_HIGH_SCORE',
+      'JOURNAL_HIGH:' + entryId,
+      ''
+    );
+  }
 
   addNotification_(
     String(row.email || '').toLowerCase(),
@@ -1597,8 +1771,1345 @@ function getRaffleEntries_(raffleId, email) {
   return out;
 }
 
+function todayKeyNY_() {
+  return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+}
+
+function weekKeyNY_() {
+  return Utilities.formatDate(new Date(), TZ, 'yyyy-ww');
+}
+
+function dateMs_(value) {
+  const d = new Date(value || 0);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
+function listSeasons_() {
+  return listSheetObjects_('Seasons', true).sort(function(a, b) {
+    return dateMs_(b.created_at) - dateMs_(a.created_at);
+  });
+}
+
+function getSeasonById_(seasonId) {
+  const want = String(seasonId || '').trim();
+  if (!want) return null;
+  const rows = listSeasons_();
+  return rows.find(function(row) {
+    return String(row.season_id || '').trim() === want;
+  }) || null;
+}
+
+function getActiveSeason_() {
+  const now = Date.now();
+  const rows = listSeasons_().filter(function(row) {
+    return upper(row.status || '') === 'ACTIVE';
+  });
+  if (!rows.length) return null;
+
+  for (let i = 0; i < rows.length; i++) {
+    const startsAt = dateMs_(rows[i].starts_at);
+    const endsAt = dateMs_(rows[i].ends_at);
+    const inWindow = (!startsAt || startsAt <= now) && (!endsAt || endsAt >= now);
+    if (inWindow) return rows[i];
+  }
+  return rows[0];
+}
+
+function clearOtherActiveSeasons_(keepSeasonId) {
+  const keepId = String(keepSeasonId || '').trim();
+  const d = readSheet('Seasons');
+  const rows = listSheetObjects_('Seasons', true);
+  rows.forEach(function(row) {
+    if (String(row.season_id || '') === keepId) return;
+    if (upper(row.status || '') !== 'ACTIVE') return;
+    setCellByKey(d, row._row_num, 'status', 'COMPLETED');
+  });
+}
+
+function getDisplayNameByEmail_(email) {
+  const user = getUserRowByEmail_(email);
+  return user ? user.displayName : displayFromEmail(email);
+}
+
+function getLeagueBalanceForEntity_(seasonId, scope, email, podId) {
+  const d = readSheet('League_Points_Ledger');
+  const sid = String(seasonId || '').trim();
+  const sc = upper(scope || 'INDIVIDUAL');
+  const em = String(email || '').toLowerCase().trim();
+  const pid = String(podId || '').trim();
+  let total = 0;
+
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    if (String(getRowValue(row, d, 'season_id', '')).trim() !== sid) continue;
+    if (upper(getRowValue(row, d, 'scope', 'INDIVIDUAL')) !== sc) continue;
+    if (sc === 'POD') {
+      if (String(getRowValue(row, d, 'pod_id', '')).trim() !== pid) continue;
+    } else {
+      if (String(getRowValue(row, d, 'email', '')).toLowerCase().trim() !== em) continue;
+    }
+    total += asNumber_(getRowValue(row, d, 'delta_points', 0), 0);
+  }
+
+  return total;
+}
+
+function hasLeaguePointSource_(seasonId, scope, email, podId, sourceRef, reason) {
+  const sid = String(seasonId || '').trim();
+  const sc = upper(scope || 'INDIVIDUAL');
+  const em = String(email || '').toLowerCase().trim();
+  const pid = String(podId || '').trim();
+  const src = String(sourceRef || '').trim();
+  const rs = upper(reason || '');
+  if (!sid || !src) return false;
+
+  const d = readSheet('League_Points_Ledger');
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    if (String(getRowValue(row, d, 'season_id', '')).trim() !== sid) continue;
+    if (upper(getRowValue(row, d, 'scope', 'INDIVIDUAL')) !== sc) continue;
+    if (String(getRowValue(row, d, 'source_ref', '')).trim() !== src) continue;
+    if (rs && upper(getRowValue(row, d, 'reason', '')) !== rs) continue;
+    if (sc === 'POD') {
+      if (String(getRowValue(row, d, 'pod_id', '')).trim() !== pid) continue;
+    } else {
+      if (String(getRowValue(row, d, 'email', '')).toLowerCase().trim() !== em) continue;
+    }
+    return true;
+  }
+  return false;
+}
+
+function appendLeaguePoint_(params) {
+  const sid = String(params.season_id || '').trim();
+  const scope = upper(params.scope || 'INDIVIDUAL');
+  const email = String(params.email || '').toLowerCase().trim();
+  const podId = String(params.pod_id || '').trim();
+  const deltaPoints = asNumber_(params.delta_points, 0);
+  const reason = upper(params.reason || '');
+  const sourceRef = String(params.source_ref || '').trim();
+
+  if (!sid || !deltaPoints || !reason) return null;
+  if (scope === 'POD' && !podId) return null;
+  if (scope !== 'POD' && !email) return null;
+
+  if (hasLeaguePointSource_(sid, scope, email, podId, sourceRef, reason)) {
+    return {
+      duplicate: true,
+      season_id: sid,
+      scope: scope,
+      email: email,
+      pod_id: podId,
+      delta_points: deltaPoints,
+      reason: reason
+    };
+  }
+
+  const prior = getLeagueBalanceForEntity_(sid, scope, email, podId);
+  const balanceAfter = prior + deltaPoints;
+
+  appendObjectRow('League_Points_Ledger', {
+    ts: _now(),
+    season_id: sid,
+    scope: scope,
+    email: email,
+    pod_id: podId,
+    delta_points: deltaPoints,
+    reason: reason,
+    source_ref: sourceRef,
+    balance_after: balanceAfter
+  });
+
+  return {
+    duplicate: false,
+    season_id: sid,
+    scope: scope,
+    email: email,
+    pod_id: podId,
+    delta_points: deltaPoints,
+    reason: reason,
+    source_ref: sourceRef,
+    balance_after: balanceAfter
+  };
+}
+
+function getActivePodMembership_(email, seasonId) {
+  const em = String(email || '').toLowerCase().trim();
+  const sid = String(seasonId || '').trim();
+  if (!em || !sid) return null;
+
+  const pods = listSheetObjects_('Pods', false)
+    .filter(function(row) {
+      return String(row.season_id || '').trim() === sid && upper(row.status || 'ACTIVE') === 'ACTIVE';
+    });
+  const podIds = new Set(pods.map(function(p) { return String(p.pod_id || '').trim(); }));
+  if (!podIds.size) return null;
+
+  const members = listSheetObjects_('Pod_Members', true);
+  for (let i = 0; i < members.length; i++) {
+    const row = members[i];
+    if (String(row.email || '').toLowerCase().trim() !== em) continue;
+    if (upper(row.status || 'ACTIVE') !== 'ACTIVE') continue;
+    const podId = String(row.pod_id || '').trim();
+    if (!podIds.has(podId)) continue;
+    const pod = pods.find(function(p) { return String(p.pod_id || '') === podId; }) || null;
+    return {
+      pod_id: podId,
+      pod_name: pod ? String(pod.name || '') : '',
+      season_id: sid
+    };
+  }
+
+  return null;
+}
+
+function awardLeaguePointsForEmail_(email, deltaPoints, reason, sourceRef, seasonId) {
+  const sid = String(seasonId || '').trim() || String((getActiveSeason_() || {}).season_id || '').trim();
+  const em = String(email || '').toLowerCase().trim();
+  const pts = asNumber_(deltaPoints, 0);
+  if (!sid || !em || !pts) return { awarded: false, season_id: sid };
+
+  const individual = appendLeaguePoint_({
+    season_id: sid,
+    scope: 'INDIVIDUAL',
+    email: em,
+    delta_points: pts,
+    reason: reason,
+    source_ref: sourceRef
+  });
+
+  const membership = getActivePodMembership_(em, sid);
+  let pod = null;
+  if (membership && membership.pod_id) {
+    pod = appendLeaguePoint_({
+      season_id: sid,
+      scope: 'POD',
+      email: em,
+      pod_id: membership.pod_id,
+      delta_points: pts,
+      reason: reason,
+      source_ref: sourceRef
+    });
+  }
+
+  return {
+    awarded: !!(individual && !individual.duplicate),
+    season_id: sid,
+    individual: individual,
+    pod: pod
+  };
+}
+
+function getLeagueStandings_(scope, seasonId) {
+  const sid = String(seasonId || '').trim() || String((getActiveSeason_() || {}).season_id || '').trim();
+  const sc = upper(scope || 'INDIVIDUAL');
+  if (!sid) return [];
+
+  const d = readSheet('League_Points_Ledger');
+  const totals = new Map();
+
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    if (String(getRowValue(row, d, 'season_id', '')).trim() !== sid) continue;
+    if (upper(getRowValue(row, d, 'scope', 'INDIVIDUAL')) !== sc) continue;
+    const delta = asNumber_(getRowValue(row, d, 'delta_points', 0), 0);
+    const key = sc === 'POD'
+      ? String(getRowValue(row, d, 'pod_id', '')).trim()
+      : String(getRowValue(row, d, 'email', '')).toLowerCase().trim();
+    if (!key) continue;
+    totals.set(key, (totals.get(key) || 0) + delta);
+  }
+
+  let rows = Array.from(totals.entries()).map(function(entry) {
+    const key = entry[0];
+    const points = entry[1];
+    if (sc === 'POD') {
+      const pod = listSheetObjects_('Pods', false).find(function(p) { return String(p.pod_id || '').trim() === key; }) || {};
+      return {
+        key: key,
+        pod_id: key,
+        label: String(pod.name || key),
+        points: points
+      };
+    }
+    return {
+      key: key,
+      email: key,
+      label: getDisplayNameByEmail_(key),
+      points: points
+    };
+  });
+
+  rows.sort(function(a, b) {
+    if (b.points !== a.points) return b.points - a.points;
+    return String(a.label || a.key).localeCompare(String(b.label || b.key));
+  });
+
+  rows = rows.map(function(row, idx) {
+    return Object.assign({}, row, {
+      rank: idx + 1,
+      rank_delta: 0
+    });
+  });
+
+  return rows;
+}
+
+function incrementDailyEngagementMetric_(field, delta) {
+  const metricField = normalizeHeaderKey(field);
+  const allowed = new Set([
+    'active_students',
+    'claims_submitted',
+    'journals_submitted',
+    'events_participated',
+    'quests_completed',
+    'kudos_sent'
+  ]);
+  if (!allowed.has(metricField)) return;
+
+  const amount = asNumber_(delta, 0);
+  if (!amount) return;
+
+  const key = todayKeyNY_();
+  const d = readSheet('Engagement_Metrics_Daily');
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    if (String(getRowValue(row, d, 'date_key', '')).trim() !== key) continue;
+    const cur = asNumber_(getRowValue(row, d, metricField, 0), 0);
+    setCellByKey(d, i + 2, metricField, cur + amount);
+    return;
+  }
+
+  appendObjectRow('Engagement_Metrics_Daily', {
+    date_key: key,
+    active_students: metricField === 'active_students' ? amount : 0,
+    claims_submitted: metricField === 'claims_submitted' ? amount : 0,
+    journals_submitted: metricField === 'journals_submitted' ? amount : 0,
+    events_participated: metricField === 'events_participated' ? amount : 0,
+    quests_completed: metricField === 'quests_completed' ? amount : 0,
+    kudos_sent: metricField === 'kudos_sent' ? amount : 0
+  });
+}
+
+function touchStudentEngagement_(email, patch) {
+  const em = String(email || '').toLowerCase().trim();
+  if (!em) return;
+
+  const row = getUserRowByEmail_(em);
+  const userStreak = row ? asNumber_(row.streak, 0) : 0;
+  const data = patch || {};
+  const d = readSheet('Student_Engagement_State');
+  const today = todayKeyNY_();
+
+  for (let i = 0; i < d.rows.length; i++) {
+    const curEmail = String(getRowValue(d.rows[i], d, 'email', '')).toLowerCase().trim();
+    if (curEmail !== em) continue;
+    const lastSeen = getRowValue(d.rows[i], d, 'last_seen_at', '');
+    const wasToday = lastSeen ? Utilities.formatDate(new Date(lastSeen), TZ, 'yyyy-MM-dd') === today : false;
+    if (!wasToday) incrementDailyEngagementMetric_('active_students', 1);
+
+    setCellByKey(d, i + 2, 'last_seen_at', _now());
+    setCellByKey(d, i + 2, 'streak_days', asNumber_(data.streak_days, userStreak));
+    if (data.favorite_role !== undefined) setCellByKey(d, i + 2, 'favorite_role', String(data.favorite_role || ''));
+    if (data.weekly_goal_json !== undefined) setCellByKey(d, i + 2, 'weekly_goal_json', String(data.weekly_goal_json || ''));
+    return;
+  }
+
+  incrementDailyEngagementMetric_('active_students', 1);
+  appendObjectRow('Student_Engagement_State', {
+    email: em,
+    streak_days: asNumber_(data.streak_days, userStreak),
+    streak_shield_uses_week: 0,
+    last_seen_at: _now(),
+    favorite_role: String(data.favorite_role || ''),
+    weekly_goal_json: String(data.weekly_goal_json || '')
+  });
+}
+
+function getPodMembers_(podId) {
+  const wantPodId = String(podId || '').trim();
+  if (!wantPodId) return [];
+  return listSheetObjects_('Pod_Members', false)
+    .filter(function(row) {
+      return String(row.pod_id || '').trim() === wantPodId && upper(row.status || 'ACTIVE') === 'ACTIVE';
+    })
+    .map(function(row) {
+      const email = String(row.email || '').toLowerCase().trim();
+      return {
+        email: email,
+        display_name: getDisplayNameByEmail_(email),
+        joined_at: row.joined_at || ''
+      };
+    })
+    .sort(function(a, b) {
+      return String(a.display_name || a.email).localeCompare(String(b.display_name || b.email));
+    });
+}
+
+function listLiveEvents_() {
+  return listSheetObjects_('Live_Events', true).sort(function(a, b) {
+    return dateMs_(a.open_at) - dateMs_(b.open_at);
+  });
+}
+
+function getLiveEventById_(eventId) {
+  const want = String(eventId || '').trim();
+  if (!want) return null;
+  return listLiveEvents_().find(function(row) {
+    return String(row.event_id || '').trim() === want;
+  }) || null;
+}
+
+function isLiveEventActiveNow_(eventRow) {
+  if (!eventRow) return false;
+  if (upper(eventRow.status || '') !== 'ACTIVE') return false;
+  const now = Date.now();
+  const openAt = dateMs_(eventRow.open_at);
+  const closeAt = dateMs_(eventRow.close_at);
+  if (openAt && openAt > now) return false;
+  if (closeAt && closeAt < now) return false;
+  return true;
+}
+
+function getEventSubmissionRows_(eventId, email) {
+  const wantEvent = String(eventId || '').trim();
+  const wantEmail = String(email || '').toLowerCase().trim();
+  return listSheetObjects_('Event_Submissions', true)
+    .filter(function(row) {
+      if (wantEvent && String(row.event_id || '').trim() !== wantEvent) return false;
+      if (wantEmail && String(row.email || '').toLowerCase().trim() !== wantEmail) return false;
+      return true;
+    });
+}
+
+function getClaimPointsByCodeForEmail_(email, claimCode) {
+  const em = String(email || '').toLowerCase().trim();
+  const ref = normCode(claimCode);
+  if (!em || !ref) return 0;
+  const d = readSheet('XP_Ledger');
+  for (let i = d.rows.length - 1; i >= 0; i--) {
+    const row = d.rows[i];
+    if (String(getRowValue(row, d, 'email', '')).toLowerCase().trim() !== em) continue;
+    if (normCode(getRowValue(row, d, 'ref_code', '')) !== ref) continue;
+    return asNumber_(getRowValue(row, d, 'points', 0), 0);
+  }
+  return 0;
+}
+
+function awardEventTopBonusesIfNeeded_(eventId) {
+  const event = getLiveEventById_(eventId);
+  if (!event) return;
+
+  const submissions = getEventSubmissionRows_(eventId, '')
+    .filter(function(row) { return upper(row.status || 'SUBMITTED') !== 'REJECTED'; })
+    .sort(function(a, b) {
+      const scoreDiff = asNumber_(b.score, 0) - asNumber_(a.score, 0);
+      if (scoreDiff !== 0) return scoreDiff;
+      return dateMs_(a.submitted_at) - dateMs_(b.submitted_at);
+    })
+    .slice(0, 3);
+
+  const bonuses = [LEAGUE_POINTS.EVENT_TOP_1, LEAGUE_POINTS.EVENT_TOP_2, LEAGUE_POINTS.EVENT_TOP_3];
+  for (let i = 0; i < submissions.length; i++) {
+    const s = submissions[i];
+    const email = String(s.email || '').toLowerCase().trim();
+    if (!email) continue;
+    const reason = i === 0 ? 'EVENT_TOP_1' : (i === 1 ? 'EVENT_TOP_2' : 'EVENT_TOP_3');
+    const sourceRef = String(eventId) + ':' + email + ':' + reason;
+    awardLeaguePointsForEmail_(email, bonuses[i], reason, sourceRef, String(event.season_id || ''));
+    addNotification_(email, 'Live event bonus', 'You earned a top event bonus (' + bonuses[i] + ' points).', 'EVENT');
+  }
+}
+
+function getQuestById_(questId) {
+  const want = String(questId || '').trim();
+  if (!want) return null;
+  return listSheetObjects_('Quest_Catalog', true).find(function(row) {
+    return String(row.quest_id || '').trim() === want;
+  }) || null;
+}
+
+function getQuestCompletion_(questId, email) {
+  const qid = String(questId || '').trim();
+  const em = String(email || '').toLowerCase().trim();
+  if (!qid || !em) return null;
+  return listSheetObjects_('Quest_Completions', true).find(function(row) {
+    return String(row.quest_id || '').trim() === qid &&
+      String(row.email || '').toLowerCase().trim() === em &&
+      upper(row.status || 'CLAIMED') === 'CLAIMED';
+  }) || null;
+}
+
+function getStudentQuestProgress_(questRow, email) {
+  const em = String(email || '').toLowerCase().trim();
+  const targetType = upper(questRow.target_type || '');
+  const target = safeJsonParse_(questRow.target_json, {}) || {};
+  const requiredCount = Math.max(1, asNumber_(target.count !== undefined ? target.count : target.value, 1));
+  let current = 0;
+
+  if (targetType === 'CLAIM_COUNT') {
+    const d = readSheet('XP_Ledger');
+    for (let i = 0; i < d.rows.length; i++) {
+      if (String(getRowValue(d.rows[i], d, 'email', '')).toLowerCase().trim() !== em) continue;
+      current += 1;
+    }
+  } else if (targetType === 'JOURNAL_COUNT') {
+    current = getJournalRows_(em, false).length;
+  } else if (targetType === 'EVENT_PARTICIPATION') {
+    current = getEventSubmissionRows_('', em).length;
+  } else if (targetType === 'STREAK_MILESTONE') {
+    const user = getUserRowByEmail_(em);
+    current = user ? asNumber_(user.streak, 0) : 0;
+  }
+
+  return {
+    target_type: targetType,
+    required: requiredCount,
+    current: current,
+    met: current >= requiredCount
+  };
+}
+
+function actionGetActiveSeason_(payload) {
+  const season = getActiveSeason_();
+  if (!season) return portalOk_('ACTIVE_SEASON_OK', 'No active season.', null);
+
+  const now = Date.now();
+  const endsAt = dateMs_(season.ends_at);
+  const msRemaining = endsAt ? Math.max(0, endsAt - now) : 0;
+  return portalOk_('ACTIVE_SEASON_OK', 'Active season loaded.', {
+    season_id: String(season.season_id || ''),
+    title: String(season.title || ''),
+    starts_at: season.starts_at || '',
+    ends_at: season.ends_at || '',
+    status: String(season.status || 'ACTIVE'),
+    ms_remaining: msRemaining
+  });
+}
+
+function actionGetLeagueStandings_(payload) {
+  const data = payload.data || {};
+  const scope = upper(data.scope || 'INDIVIDUAL');
+  const seasonId = String(data.season_id || '').trim();
+  const rows = getLeagueStandings_(scope, seasonId);
+  return portalOk_('LEAGUE_STANDINGS_OK', 'League standings loaded.', {
+    scope: scope,
+    season_id: seasonId || String((getActiveSeason_() || {}).season_id || ''),
+    rows: rows,
+    recent_points: rows.slice(0, 10)
+  });
+}
+
+function actionGetMyPod_(payload) {
+  const email = assertActorEmail_(payload);
+  const season = getActiveSeason_();
+  if (!season) return portalOk_('MY_POD_OK', 'No active season.', null);
+
+  const membership = getActivePodMembership_(email, season.season_id);
+  if (!membership) return portalOk_('MY_POD_OK', 'No pod assigned.', null);
+
+  const pod = listSheetObjects_('Pods', false).find(function(row) {
+    return String(row.pod_id || '').trim() === String(membership.pod_id || '').trim();
+  }) || {};
+  const members = getPodMembers_(membership.pod_id);
+  const podStandings = getLeagueStandings_('POD', season.season_id);
+  const podRankRow = podStandings.find(function(row) { return String(row.pod_id || '') === String(membership.pod_id || ''); }) || {};
+
+  const kudos = listSheetObjects_('Pod_Kudos', false)
+    .filter(function(row) { return String(row.pod_id || '') === String(membership.pod_id || ''); })
+    .sort(function(a, b) { return dateMs_(b.created_at) - dateMs_(a.created_at); })
+    .slice(0, 25)
+    .map(function(row) {
+      return {
+        kudos_id: String(row.kudos_id || ''),
+        from_email: String(row.from_email || '').toLowerCase(),
+        to_email: String(row.to_email || '').toLowerCase(),
+        from_display: getDisplayNameByEmail_(row.from_email || ''),
+        to_display: getDisplayNameByEmail_(row.to_email || ''),
+        message: String(row.message || ''),
+        created_at: row.created_at || ''
+      };
+    });
+
+  return portalOk_('MY_POD_OK', 'Pod details loaded.', {
+    season_id: String(season.season_id || ''),
+    pod_id: String(membership.pod_id || ''),
+    pod_name: String(pod.name || membership.pod_name || ''),
+    rank: asNumber_(podRankRow.rank, 0),
+    points: asNumber_(podRankRow.points, 0),
+    members: members,
+    recent_kudos: kudos
+  });
+}
+
+function actionSendPodKudos_(payload) {
+  const email = assertActorEmail_(payload);
+  if (!rateLimitAllowed_(email, 'POD_KUDOS', 1, 3)) {
+    return rateLimitErr_('POD_KUDOS', 1, 3, 'Too many kudos requests. Please wait a minute.');
+  }
+  const data = payload.data || {};
+  const podId = String(data.pod_id || '').trim();
+  const targetEmail = String(data.target_email || '').toLowerCase().trim();
+  const message = String(data.message || '').trim();
+  if (!podId || !targetEmail || !message) {
+    return portalErr_('MISSING_KUDOS_FIELDS', 'pod_id, target_email, and message are required.', null);
+  }
+
+  const season = getActiveSeason_();
+  if (!season) return portalErr_('NO_ACTIVE_SEASON', 'No active season.', null);
+
+  const senderMembership = getActivePodMembership_(email, season.season_id);
+  const targetMembership = getActivePodMembership_(targetEmail, season.season_id);
+  if (!senderMembership || !targetMembership) {
+    return portalErr_('POD_MEMBERSHIP_REQUIRED', 'Both users must be in active pods.', null);
+  }
+  if (String(senderMembership.pod_id) !== String(targetMembership.pod_id) || String(senderMembership.pod_id) !== podId) {
+    return portalErr_('POD_MISMATCH', 'Kudos can only be sent within your pod.', null);
+  }
+
+  const today = todayKeyNY_();
+  const sentToday = listSheetObjects_('Pod_Kudos', false).filter(function(row) {
+    if (String(row.from_email || '').toLowerCase().trim() !== email) return false;
+    const ts = row.created_at ? Utilities.formatDate(new Date(row.created_at), TZ, 'yyyy-MM-dd') : '';
+    return ts === today;
+  }).length;
+  if (sentToday >= 3) {
+    return portalErr_('KUDOS_DAILY_CAP_REACHED', 'Daily kudos cap reached (3).', { daily_cap: 3 });
+  }
+
+  const kudosId = generateId_('KDS');
+  appendObjectRow('Pod_Kudos', {
+    kudos_id: kudosId,
+    pod_id: podId,
+    from_email: email,
+    to_email: targetEmail,
+    message: message,
+    created_at: _now()
+  });
+
+  awardLeaguePointsForEmail_(email, LEAGUE_POINTS.POD_KUDOS, 'POD_KUDOS', kudosId, season.season_id);
+  incrementDailyEngagementMetric_('kudos_sent', 1);
+  touchStudentEngagement_(email);
+
+  addNotification_(targetEmail, 'Pod kudos', getDisplayNameByEmail_(email) + ': ' + message, 'POD');
+  return portalOk_('KUDOS_SENT', 'Kudos sent.', { kudos_id: kudosId, awarded_points: LEAGUE_POINTS.POD_KUDOS });
+}
+
+function actionGetActiveEvents_(payload) {
+  const email = assertActorEmail_(payload);
+  const season = getActiveSeason_();
+  const seasonId = String((season || {}).season_id || '');
+  const rows = listLiveEvents_()
+    .filter(function(row) {
+      if (!seasonId) return false;
+      if (String(row.season_id || '') !== seasonId) return false;
+      return isLiveEventActiveNow_(row);
+    })
+    .map(function(row) {
+      const already = getEventSubmissionRows_(String(row.event_id || ''), email).length > 0;
+      return {
+        event_id: String(row.event_id || ''),
+        season_id: String(row.season_id || ''),
+        title: String(row.title || ''),
+        description: String(row.description || ''),
+        track: String(row.track || ''),
+        module: String(row.module || ''),
+        open_at: row.open_at || '',
+        close_at: row.close_at || '',
+        rules_json: String(row.rules_json || ''),
+        status: String(row.status || ''),
+        already_submitted: already
+      };
+    });
+  return portalOk_('ACTIVE_EVENTS_OK', 'Active events loaded.', rows);
+}
+
+function actionSubmitEventEntry_(payload) {
+  const email = assertActorEmail_(payload);
+  if (!rateLimitAllowed_(email, 'EVENT_SUBMIT', 1, 2)) {
+    return rateLimitErr_('EVENT_SUBMIT', 1, 2, 'Too many event submissions. Please wait a minute.');
+  }
+  const data = payload.data || {};
+  const eventId = String(data.event_id || '').trim();
+  const claimCode = normCode(data.claim_code || '');
+  const reflection = String(data.reflection_note || '').trim();
+  if (!eventId || !claimCode) {
+    return portalErr_('MISSING_EVENT_SUBMISSION_FIELDS', 'event_id and claim_code are required.', null);
+  }
+
+  const eventRow = getLiveEventById_(eventId);
+  if (!eventRow) return portalErr_('EVENT_NOT_FOUND', 'Event not found.', null);
+  if (!isLiveEventActiveNow_(eventRow)) return portalErr_('EVENT_NOT_ACTIVE', 'Event is not active.', null);
+
+  const existing = getEventSubmissionRows_(eventId, email);
+  if (existing.length) return portalErr_('EVENT_ALREADY_SUBMITTED', 'You already submitted this event.', null);
+
+  const claimContext = findClaimContextByCodeForEmail_(email, claimCode);
+  if (!claimContext) return portalErr_('CLAIM_NOT_FOUND_FOR_EVENT', 'You must submit a valid claimed code.', null);
+
+  if (String(eventRow.track || '').trim() && String(claimContext.track || '').trim() !== String(eventRow.track || '').trim()) {
+    return portalErr_('EVENT_TRACK_MISMATCH', 'Claim code track does not match event track.', null);
+  }
+  if (String(eventRow.module || '').trim() &&
+      normalizeModuleKey(claimContext.module_id) !== normalizeModuleKey(eventRow.module)) {
+    return portalErr_('EVENT_MODULE_MISMATCH', 'Claim code module does not match event module.', null);
+  }
+
+  const score = getClaimPointsByCodeForEmail_(email, claimCode);
+  const submissionId = generateId_('EVS');
+  appendObjectRow('Event_Submissions', {
+    submission_id: submissionId,
+    event_id: eventId,
+    email: email,
+    claim_code: claimCode,
+    score: score,
+    status: 'SUBMITTED',
+    submitted_at: _now(),
+    reviewed_at: '',
+    reviewed_by: '',
+    notes: reflection
+  });
+
+  awardLeaguePointsForEmail_(email, LEAGUE_POINTS.EVENT_PARTICIPATION, 'EVENT_PARTICIPATION', submissionId, String(eventRow.season_id || ''));
+  incrementDailyEngagementMetric_('events_participated', 1);
+  touchStudentEngagement_(email);
+
+  addNotification_(email, 'Live event submitted', 'You earned participation points for event ' + eventId + '.', 'EVENT');
+  return portalOk_('EVENT_SUBMITTED', 'Event submission accepted.', {
+    submission_id: submissionId,
+    event_id: eventId,
+    score: score,
+    awarded_points: LEAGUE_POINTS.EVENT_PARTICIPATION
+  });
+}
+
+function actionGetMyQuests_(payload) {
+  const email = assertActorEmail_(payload);
+  const quests = listSheetObjects_('Quest_Catalog', false)
+    .filter(function(row) { return String(row.enabled || 'TRUE').toLowerCase() !== 'false'; })
+    .sort(function(a, b) { return asNumber_(a.sort_order, 9999) - asNumber_(b.sort_order, 9999); });
+
+  const rows = quests.map(function(row) {
+    const questId = String(row.quest_id || '');
+    const progress = getStudentQuestProgress_(row, email);
+    const completion = getQuestCompletion_(questId, email);
+    return {
+      quest_id: questId,
+      title: String(row.title || ''),
+      description: String(row.description || ''),
+      difficulty: String(row.difficulty || ''),
+      reward_points: asNumber_(row.reward_points, 0),
+      reward_badge: String(row.reward_badge || ''),
+      target_type: progress.target_type,
+      progress: progress.current,
+      required: progress.required,
+      met: progress.met,
+      claimed: !!completion
+    };
+  });
+
+  return portalOk_('MY_QUESTS_OK', 'Quests loaded.', rows);
+}
+
+function actionClaimQuestReward_(payload) {
+  const email = assertActorEmail_(payload);
+  if (!rateLimitAllowed_(email, 'QUEST_CLAIM', 1, 3)) {
+    return rateLimitErr_('QUEST_CLAIM', 1, 3, 'Too many quest claims. Please wait a minute.');
+  }
+  const data = payload.data || {};
+  const questId = String(data.quest_id || '').trim();
+  if (!questId) return portalErr_('MISSING_QUEST_ID', 'quest_id is required.', null);
+
+  const quest = getQuestById_(questId);
+  if (!quest) return portalErr_('QUEST_NOT_FOUND', 'Quest not found.', null);
+  if (String(quest.enabled || 'TRUE').toLowerCase() === 'false') {
+    return portalErr_('QUEST_DISABLED', 'Quest is not enabled.', null);
+  }
+
+  const existing = getQuestCompletion_(questId, email);
+  if (existing) return portalErr_('QUEST_ALREADY_CLAIMED', 'Quest reward already claimed.', null);
+
+  const progress = getStudentQuestProgress_(quest, email);
+  if (!progress.met) {
+    return portalErr_('QUEST_NOT_COMPLETE', 'Quest target not completed yet.', {
+      current: progress.current,
+      required: progress.required
+    });
+  }
+
+  const completionId = generateId_('QCM');
+  const rewardPoints = asNumber_(quest.reward_points, 0);
+  appendObjectRow('Quest_Completions', {
+    completion_id: completionId,
+    quest_id: questId,
+    email: email,
+    status: 'CLAIMED',
+    awarded_points: rewardPoints,
+    awarded_at: _now(),
+    source_ref: questId
+  });
+
+  if (rewardPoints > 0) {
+    awardLeaguePointsForEmail_(email, rewardPoints, 'QUEST_REWARD', completionId, '');
+  }
+  if (String(quest.reward_badge || '').trim()) {
+    grantBadge(email, String(quest.reward_badge || '').trim());
+  }
+
+  incrementDailyEngagementMetric_('quests_completed', 1);
+  touchStudentEngagement_(email);
+  addNotification_(email, 'Quest reward claimed', 'Quest "' + String(quest.title || questId) + '" reward claimed.', 'QUEST');
+
+  return portalOk_('QUEST_REWARD_CLAIMED', 'Quest reward claimed.', {
+    completion_id: completionId,
+    quest_id: questId,
+    awarded_points: rewardPoints,
+    awarded_badge: String(quest.reward_badge || '')
+  });
+}
+
+function actionGetMyRewards_(payload) {
+  const email = assertActorEmail_(payload);
+  const state = listSheetObjects_('Student_Engagement_State', false).find(function(row) {
+    return String(row.email || '').toLowerCase().trim() === email;
+  }) || {};
+
+  const individualRows = listSheetObjects_('League_Points_Ledger', false)
+    .filter(function(row) {
+      return upper(row.scope || 'INDIVIDUAL') === 'INDIVIDUAL' &&
+        String(row.email || '').toLowerCase().trim() === email;
+    })
+    .sort(function(a, b) { return dateMs_(b.ts) - dateMs_(a.ts); })
+    .slice(0, 25)
+    .map(function(row) {
+      return {
+        ts: row.ts || '',
+        delta_points: asNumber_(row.delta_points, 0),
+        reason: String(row.reason || ''),
+        source_ref: String(row.source_ref || '')
+      };
+    });
+
+  const rewards = {
+    streak_days: asNumber_(state.streak_days, asNumber_((getUserRowByEmail_(email) || {}).streak, 0)),
+    streak_shield_uses_week: asNumber_(state.streak_shield_uses_week, 0),
+    weekly_goal_json: String(state.weekly_goal_json || ''),
+    favorite_role: String(state.favorite_role || ''),
+    recent_points: individualRows,
+    quest_claims: listSheetObjects_('Quest_Completions', false)
+      .filter(function(row) {
+        return String(row.email || '').toLowerCase().trim() === email && upper(row.status || '') === 'CLAIMED';
+      })
+      .sort(function(a, b) { return dateMs_(b.awarded_at) - dateMs_(a.awarded_at); })
+      .slice(0, 25)
+  };
+
+  return portalOk_('MY_REWARDS_OK', 'Rewards loaded.', rewards);
+}
+
+function actionAdminCreateSeason_(payload) {
+  requirePortalRole_(payload, ['ADMIN']);
+  const data = payload.data || {};
+  const title = String(data.title || '').trim();
+  const startsAt = data.starts_at ? new Date(data.starts_at) : _now();
+  const endsAt = data.ends_at ? new Date(data.ends_at) : '';
+  const status = upper(data.status || 'ACTIVE') || 'ACTIVE';
+  if (!title) return portalErr_('MISSING_SEASON_TITLE', 'title is required.', null);
+
+  const seasonId = generateId_('SEA');
+  appendObjectRow('Seasons', {
+    season_id: seasonId,
+    title: title,
+    starts_at: startsAt,
+    ends_at: endsAt,
+    status: status,
+    created_by: String(payload.actorEmail || '').toLowerCase(),
+    created_at: _now()
+  });
+
+  if (status === 'ACTIVE') clearOtherActiveSeasons_(seasonId);
+  return portalOk_('SEASON_CREATED', 'Season created.', {
+    season_id: seasonId,
+    title: title,
+    status: status
+  });
+}
+
+function actionAdminListSeasons_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const rows = listSeasons_().map(function(row) {
+    const seasonId = String(row.season_id || '');
+    const participantSet = new Set(
+      listSheetObjects_('League_Points_Ledger', false)
+        .filter(function(lp) {
+          return String(lp.season_id || '') === seasonId && upper(lp.scope || '') === 'INDIVIDUAL';
+        })
+        .map(function(lp) { return String(lp.email || '').toLowerCase().trim(); })
+    );
+    const eventCount = listSheetObjects_('Live_Events', false).filter(function(ev) {
+      return String(ev.season_id || '') === seasonId;
+    }).length;
+    return Object.assign({}, stripRuntimeKeys_(row), {
+      participant_count: participantSet.size,
+      event_count: eventCount
+    });
+  });
+  return portalOk_('SEASONS_OK', 'Seasons loaded.', rows);
+}
+
+function actionAdminUpsertEvent_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const eventId = String(data.event_id || '').trim() || generateId_('EVT');
+  const seasonId = String(data.season_id || (getActiveSeason_() || {}).season_id || '').trim();
+  const title = String(data.title || '').trim();
+  if (!seasonId || !title) return portalErr_('MISSING_EVENT_FIELDS', 'season_id and title are required.', null);
+
+  const d = readSheet('Live_Events');
+  const rows = listSheetObjects_('Live_Events', true);
+  const openAt = data.open_at ? new Date(data.open_at) : _now();
+  const closeAt = data.close_at ? new Date(data.close_at) : '';
+  const status = upper(data.status || 'ACTIVE') || 'ACTIVE';
+
+  let found = null;
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i].event_id || '') === eventId) {
+      found = rows[i];
+      break;
+    }
+  }
+
+  if (found) {
+    setCellByKey(d, found._row_num, 'season_id', seasonId);
+    setCellByKey(d, found._row_num, 'title', title);
+    setCellByKey(d, found._row_num, 'description', String(data.description || found.description || ''));
+    setCellByKey(d, found._row_num, 'track', String(data.track || found.track || ''));
+    setCellByKey(d, found._row_num, 'module', String(data.module || found.module || ''));
+    setCellByKey(d, found._row_num, 'open_at', openAt);
+    setCellByKey(d, found._row_num, 'close_at', closeAt);
+    setCellByKey(d, found._row_num, 'rules_json', String(data.rules_json || found.rules_json || '{}'));
+    setCellByKey(d, found._row_num, 'status', status);
+  } else {
+    appendObjectRow('Live_Events', {
+      event_id: eventId,
+      season_id: seasonId,
+      title: title,
+      description: String(data.description || ''),
+      track: String(data.track || ''),
+      module: String(data.module || ''),
+      open_at: openAt,
+      close_at: closeAt,
+      rules_json: String(data.rules_json || '{}'),
+      status: status,
+      created_by: String(payload.actorEmail || '').toLowerCase(),
+      created_at: _now()
+    });
+  }
+
+  if (status === 'ACTIVE') {
+    const updated = readSheet('Live_Events');
+    const all = listSheetObjects_('Live_Events', true);
+    all.forEach(function(row) {
+      if (String(row.event_id || '') === eventId) return;
+      if (String(row.season_id || '') !== seasonId) return;
+      if (String(row.track || '') !== String(data.track || row.track || '')) return;
+      if (upper(row.status || '') === 'ACTIVE') {
+        setCellByKey(updated, row._row_num, 'status', 'SCHEDULED');
+      }
+    });
+  }
+
+  if (status === 'CLOSED') {
+    awardEventTopBonusesIfNeeded_(eventId);
+  }
+
+  return portalOk_('EVENT_UPSERT_OK', 'Event saved.', {
+    event_id: eventId,
+    season_id: seasonId,
+    status: status
+  });
+}
+
+function actionAdminListEvents_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const seasonId = String(data.season_id || '').trim();
+
+  const rows = listLiveEvents_().filter(function(row) {
+    if (!seasonId) return true;
+    return String(row.season_id || '') === seasonId;
+  }).map(function(row) {
+    const eventId = String(row.event_id || '');
+    const submissions = getEventSubmissionRows_(eventId, '');
+    const participants = new Set(submissions.map(function(s) { return String(s.email || '').toLowerCase(); }));
+    const completed = submissions.filter(function(s) { return upper(s.status || '') === 'SCORED'; }).length;
+    return Object.assign({}, stripRuntimeKeys_(row), {
+      submission_count: submissions.length,
+      participant_count: participants.size,
+      completed_count: completed
+    });
+  });
+
+  return portalOk_('EVENTS_OK', 'Events loaded.', rows);
+}
+
+function actionAdminAssignPods_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const seasonId = String(data.season_id || (getActiveSeason_() || {}).season_id || '').trim();
+  if (!seasonId) return portalErr_('MISSING_SEASON_ID', 'season_id is required.', null);
+  const podSize = Math.max(2, Math.min(8, asNumber_(data.pod_size, DEFAULT_POD_SIZE)));
+
+  const users = listSheetObjects_('Portal_Users', false)
+    .filter(function(row) {
+      return upper(row.status || 'ACTIVE') === 'ACTIVE' && upper(row.role || 'STUDENT') === 'STUDENT';
+    })
+    .map(function(row) { return String(row.email || '').toLowerCase().trim(); })
+    .filter(function(em) { return !!em; })
+    .sort();
+
+  if (!users.length) return portalErr_('NO_STUDENTS', 'No active students available for assignment.', null);
+
+  const now = _now();
+  const podsSheet = readSheet('Pods');
+  const memberSheet = readSheet('Pod_Members');
+
+  const existingPods = listSheetObjects_('Pods', true).filter(function(row) {
+    return String(row.season_id || '') === seasonId && upper(row.status || 'ACTIVE') === 'ACTIVE';
+  });
+  existingPods.forEach(function(row) {
+    setCellByKey(podsSheet, row._row_num, 'status', 'ARCHIVED');
+  });
+
+  const existingPodIds = new Set(existingPods.map(function(row) { return String(row.pod_id || ''); }));
+  const members = listSheetObjects_('Pod_Members', true);
+  members.forEach(function(row) {
+    if (!existingPodIds.has(String(row.pod_id || ''))) return;
+    if (upper(row.status || 'ACTIVE') !== 'ACTIVE') return;
+    setCellByKey(memberSheet, row._row_num, 'status', 'INACTIVE');
+    setCellByKey(memberSheet, row._row_num, 'left_at', now);
+  });
+
+  const podCount = Math.max(1, Math.ceil(users.length / podSize));
+  const podIds = [];
+  for (let i = 0; i < podCount; i++) {
+    const podId = generateId_('POD');
+    const name = 'Pod ' + String.fromCharCode(65 + i);
+    appendObjectRow('Pods', {
+      pod_id: podId,
+      name: name,
+      season_id: seasonId,
+      status: 'ACTIVE',
+      created_at: now,
+      created_by: String(payload.actorEmail || '').toLowerCase()
+    });
+    podIds.push({ pod_id: podId, name: name });
+  }
+
+  for (let i = 0; i < users.length; i++) {
+    const bucket = i % podCount;
+    appendObjectRow('Pod_Members', {
+      pod_id: podIds[bucket].pod_id,
+      email: users[i],
+      joined_at: now,
+      left_at: '',
+      status: 'ACTIVE'
+    });
+  }
+
+  return portalOk_('PODS_ASSIGNED', 'Pods assigned.', {
+    season_id: seasonId,
+    pod_size: podSize,
+    pod_count: podCount,
+    student_count: users.length
+  });
+}
+
+function actionAdminListPods_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const seasonId = String(data.season_id || (getActiveSeason_() || {}).season_id || '').trim();
+  if (!seasonId) return portalOk_('PODS_OK', 'No active season.', []);
+
+  const standings = getLeagueStandings_('POD', seasonId);
+  const pointsByPod = new Map(standings.map(function(row) {
+    return [String(row.pod_id || ''), asNumber_(row.points, 0)];
+  }));
+
+  const pods = listSheetObjects_('Pods', false).filter(function(row) {
+    return String(row.season_id || '') === seasonId;
+  }).map(function(row) {
+    const podId = String(row.pod_id || '');
+    const members = getPodMembers_(podId);
+    return {
+      pod_id: podId,
+      name: String(row.name || ''),
+      season_id: seasonId,
+      status: String(row.status || ''),
+      member_count: members.length,
+      points: asNumber_(pointsByPod.get(podId), 0),
+      members: members
+    };
+  }).sort(function(a, b) {
+    if (b.points !== a.points) return b.points - a.points;
+    return String(a.name).localeCompare(String(b.name));
+  });
+
+  return portalOk_('PODS_OK', 'Pods loaded.', pods);
+}
+
+function actionAdminUpsertQuest_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const questId = String(data.quest_id || '').trim() || generateId_('QST');
+  const title = String(data.title || '').trim();
+  const targetType = upper(data.target_type || '');
+  if (!title || !targetType) {
+    return portalErr_('MISSING_QUEST_FIELDS', 'title and target_type are required.', null);
+  }
+
+  const d = readSheet('Quest_Catalog');
+  const rows = listSheetObjects_('Quest_Catalog', true);
+  const targetJson = typeof data.target_json === 'string'
+    ? data.target_json
+    : safeStringify(data.target_json || { count: 1 });
+  const rewardPoints = asNumber_(data.reward_points, 0);
+  const enabled = data.enabled === false ? 'FALSE' : 'TRUE';
+  const sortOrder = asNumber_(data.sort_order, rows.length + 1);
+
+  const existing = rows.find(function(row) { return String(row.quest_id || '') === questId; }) || null;
+  if (existing) {
+    setCellByKey(d, existing._row_num, 'title', title);
+    setCellByKey(d, existing._row_num, 'description', String(data.description || existing.description || ''));
+    setCellByKey(d, existing._row_num, 'target_type', targetType);
+    setCellByKey(d, existing._row_num, 'target_json', targetJson);
+    setCellByKey(d, existing._row_num, 'reward_points', rewardPoints);
+    setCellByKey(d, existing._row_num, 'reward_badge', String(data.reward_badge || existing.reward_badge || ''));
+    setCellByKey(d, existing._row_num, 'difficulty', String(data.difficulty || existing.difficulty || ''));
+    setCellByKey(d, existing._row_num, 'enabled', enabled);
+    setCellByKey(d, existing._row_num, 'sort_order', sortOrder);
+  } else {
+    appendObjectRow('Quest_Catalog', {
+      quest_id: questId,
+      title: title,
+      description: String(data.description || ''),
+      target_type: targetType,
+      target_json: targetJson,
+      reward_points: rewardPoints,
+      reward_badge: String(data.reward_badge || ''),
+      difficulty: String(data.difficulty || ''),
+      enabled: enabled,
+      sort_order: sortOrder
+    });
+  }
+
+  return portalOk_('QUEST_UPSERT_OK', 'Quest saved.', { quest_id: questId });
+}
+
+function actionAdminListQuests_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const rows = listSheetObjects_('Quest_Catalog', false).sort(function(a, b) {
+    return asNumber_(a.sort_order, 9999) - asNumber_(b.sort_order, 9999);
+  });
+  return portalOk_('QUESTS_OK', 'Quests loaded.', rows);
+}
+
+function getEngagementMetricRows_(daysBack) {
+  const rows = listSheetObjects_('Engagement_Metrics_Daily', false);
+  const days = Math.max(1, asNumber_(daysBack, 7));
+  const since = Date.now() - (days * 24 * 60 * 60 * 1000);
+  return rows.filter(function(row) {
+    return dateMs_(row.date_key) >= since;
+  });
+}
+
+function actionAdminGetEngagementOverview_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const days = Math.max(1, asNumber_(data.days, 7));
+
+  const metricRows = getEngagementMetricRows_(days);
+  const sums = {
+    active_students: 0,
+    claims_submitted: 0,
+    journals_submitted: 0,
+    events_participated: 0,
+    quests_completed: 0,
+    kudos_sent: 0
+  };
+  metricRows.forEach(function(row) {
+    sums.active_students += asNumber_(row.active_students, 0);
+    sums.claims_submitted += asNumber_(row.claims_submitted, 0);
+    sums.journals_submitted += asNumber_(row.journals_submitted, 0);
+    sums.events_participated += asNumber_(row.events_participated, 0);
+    sums.quests_completed += asNumber_(row.quests_completed, 0);
+    sums.kudos_sent += asNumber_(row.kudos_sent, 0);
+  });
+
+  const activeEvents = actionGetActiveEvents_(payload).data || [];
+  const activeSeason = getActiveSeason_();
+  const standings = getLeagueStandings_('INDIVIDUAL', String((activeSeason || {}).season_id || '')).slice(0, 10);
+
+  return portalOk_('ENGAGEMENT_OVERVIEW_OK', 'Engagement overview loaded.', {
+    window_days: days,
+    totals: sums,
+    active_season: activeSeason,
+    active_events: activeEvents,
+    top_individuals: standings
+  });
+}
+
+function actionAdminGetEngagementDropoff_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const now = Date.now();
+  const since7d = now - (7 * 24 * 60 * 60 * 1000);
+
+  const users = readSheet('Users');
+  const xp = readSheet('XP_Ledger');
+  const journal = readSheet('Decision_Journal');
+  const events = readSheet('Event_Submissions');
+
+  const out = [];
+  for (let i = 0; i < users.rows.length; i++) {
+    const row = users.rows[i];
+    const email = String(getRowValue(row, users, 'email', '')).toLowerCase().trim();
+    if (!email) continue;
+
+    const lastActiveMs = dateMs_(getRowValue(row, users, 'last_active', ''));
+    const inactivityDays = lastActiveMs ? Math.floor((now - lastActiveMs) / (24 * 60 * 60 * 1000)) : 999;
+
+    let actions7d = 0;
+    for (let j = 0; j < xp.rows.length; j++) {
+      if (String(getRowValue(xp.rows[j], xp, 'email', '')).toLowerCase().trim() !== email) continue;
+      if (dateMs_(getRowValue(xp.rows[j], xp, 'ts', '')) >= since7d) actions7d += 1;
+    }
+    for (let j = 0; j < journal.rows.length; j++) {
+      if (String(getRowValue(journal.rows[j], journal, 'email', '')).toLowerCase().trim() !== email) continue;
+      if (dateMs_(getRowValue(journal.rows[j], journal, 'submitted_at', '')) >= since7d) actions7d += 1;
+    }
+    for (let j = 0; j < events.rows.length; j++) {
+      if (String(getRowValue(events.rows[j], events, 'email', '')).toLowerCase().trim() !== email) continue;
+      if (dateMs_(getRowValue(events.rows[j], events, 'submitted_at', '')) >= since7d) actions7d += 1;
+    }
+
+    if (inactivityDays < 4 && actions7d >= 3) continue;
+
+    out.push({
+      email: email,
+      display_name: String(getRowValue(row, users, 'display_name', '') || displayFromEmail(email)),
+      level: asNumber_(getRowValue(row, users, 'level', 1), 1),
+      xp: asNumber_(getRowValue(row, users, 'xp', 0), 0),
+      inactivity_days: inactivityDays,
+      actions_7d: actions7d,
+      reason: inactivityDays >= 7 ? 'INACTIVE_7D' : 'LOW_ACTIVITY_7D'
+    });
+  }
+
+  out.sort(function(a, b) {
+    if (b.inactivity_days !== a.inactivity_days) return b.inactivity_days - a.inactivity_days;
+    if (a.actions_7d !== b.actions_7d) return a.actions_7d - b.actions_7d;
+    return String(a.email).localeCompare(String(b.email));
+  });
+
+  return portalOk_('ENGAGEMENT_DROPOFF_OK', 'Dropoff list loaded.', out);
+}
+
+function actionGetHomeFeed_(payload) {
+  const email = assertActorEmail_(payload);
+  touchStudentEngagement_(email);
+
+  const activeSeason = getActiveSeason_();
+  const activeEvents = actionGetActiveEvents_(payload).data || [];
+  const myPod = actionGetMyPod_(payload).data || null;
+  const rewards = actionGetMyRewards_(payload).data || {};
+  const standings = getLeagueStandings_('INDIVIDUAL', String((activeSeason || {}).season_id || '')).slice(0, 10);
+  const myStanding = standings.find(function(row) { return String(row.email || '').toLowerCase() === email; }) || null;
+
+  const assignments = actionGetAssignments_(payload).data || [];
+  const now = Date.now();
+  const overdue = assignments.find(function(a) {
+    const status = upper(a.status || '');
+    const dueAt = dateMs_(a.due_at);
+    return status !== 'COMPLETED' && dueAt && dueAt < now;
+  }) || null;
+
+  const rec = actionGetNextBestLessons_({
+    actorEmail: email,
+    actorRole: payload.actorRole,
+    data: { limit: 1 }
+  }).data || { recommendations: [] };
+  const bestRec = (rec.recommendations || [])[0] || null;
+
+  const quickActions = [];
+  if (overdue) {
+    quickActions.push({
+      kind: 'ASSIGNMENT',
+      title: 'Finish overdue assignment',
+      subtitle: String(overdue.title || ''),
+      href: '/assignments',
+      priority: 1
+    });
+  } else {
+    quickActions.push({
+      kind: 'CLAIM',
+      title: 'Submit today\'s claim code',
+      subtitle: 'Keep your streak and earn XP.',
+      href: '/claim',
+      priority: 1
+    });
+  }
+
+  if (activeEvents.length) {
+    quickActions.push({
+      kind: 'EVENT',
+      title: 'Join live event',
+      subtitle: String(activeEvents[0].title || ''),
+      href: '/events',
+      priority: 2
+    });
+  } else {
+    quickActions.push({
+      kind: 'LEAGUE',
+      title: 'Check league standings',
+      subtitle: 'See where you rank this season.',
+      href: '/leaderboard',
+      priority: 2
+    });
+  }
+
+  if (bestRec) {
+    quickActions.push({
+      kind: 'LEARNING',
+      title: 'Next best lesson',
+      subtitle: String(bestRec.lesson_title || ('Module ' + bestRec.module_id + ' · Lesson ' + bestRec.lesson_id)),
+      href: '/recommended',
+      priority: 3
+    });
+  } else {
+    quickActions.push({
+      kind: 'JOURNAL',
+      title: 'Reflect in your journal',
+      subtitle: 'Lock in your decision-making growth.',
+      href: '/journal',
+      priority: 3
+    });
+  }
+
+  return portalOk_('HOME_FEED_OK', 'Home feed loaded.', {
+    season: activeSeason,
+    quick_actions: quickActions.slice(0, 3),
+    active_events: activeEvents.slice(0, 5),
+    pod: myPod,
+    my_standing: myStanding,
+    rewards: rewards
+  });
+}
+
 function submitClaimFromPortal_(payload) {
   const actorEmail = assertActorEmail_(payload);
+  if (!rateLimitAllowed_(actorEmail, 'CLAIM_SUBMIT', 1, 1)) {
+    return rateLimitErr_('CLAIM_SUBMIT', 1, 1, 'Claim submit limit reached. Please wait one minute.');
+  }
   const data = payload.data || {};
 
   const code = String(data.code || '').trim();
@@ -1740,6 +3251,16 @@ function submitClaimFromPortal_(payload) {
     'CLAIM'
   );
 
+  awardLeaguePointsForEmail_(
+    actorEmail,
+    LEAGUE_POINTS.CLAIM_ACCEPTED,
+    'CLAIM_ACCEPTED',
+    'CLAIM:' + normCode(code),
+    ''
+  );
+  incrementDailyEngagementMetric_('claims_submitted', 1);
+  touchStudentEngagement_(actorEmail);
+
   logOps('portal_submit_claim_ok', {
     email: actorEmail,
     code: normCode(code),
@@ -1774,8 +3295,11 @@ function getDashboardData_(email) {
   };
 
   const activeRaffle = getActiveRaffle_();
+  const activeSeason = getActiveSeason_();
   const ticketBalance = getRaffleBalanceByEmail_(email);
   const perTrack = aggregateTrackXP_(email);
+  const standings = getLeagueStandings_('INDIVIDUAL', String((activeSeason || {}).season_id || ''));
+  const myRank = standings.find(function(row) { return String(row.email || '').toLowerCase().trim() === String(email).toLowerCase().trim(); }) || null;
 
   const notificationsSheet = readSheet('Notifications');
   const notifications = notificationsSheet.rows
@@ -1806,6 +3330,23 @@ function getDashboardData_(email) {
       level_title: user.levelTitle
     },
     xp_by_track: perTrack,
+    season: activeSeason ? {
+      season_id: String(activeSeason.season_id || ''),
+      title: String(activeSeason.title || ''),
+      starts_at: activeSeason.starts_at || '',
+      ends_at: activeSeason.ends_at || '',
+      status: String(activeSeason.status || '')
+    } : null,
+    league: {
+      individual_rank: myRank ? asNumber_(myRank.rank, 0) : 0,
+      individual_points: myRank ? asNumber_(myRank.points, 0) : 0,
+      leaderboard_top: standings.slice(0, 5)
+    },
+    quick_actions: [
+      { title: 'Open Home Feed', href: '/home' },
+      { title: 'Join Live Events', href: '/events' },
+      { title: 'Check Quests', href: '/quests' }
+    ],
     raffle: activeRaffle,
     raffle_tickets: ticketBalance,
     notifications: notifications
@@ -2698,6 +4239,9 @@ function actionGetHelpFaq_(payload) {
 
 function actionCreateSupportTicket_(payload) {
   const email = assertActorEmail_(payload);
+  if (!rateLimitAllowed_(email, 'SUPPORT_TICKET', 10, 3)) {
+    return rateLimitErr_('SUPPORT_TICKET', 10, 3, 'Support ticket rate limit reached. Please wait a few minutes.');
+  }
   const data = payload.data || {};
 
   const category = String(data.category || 'GENERAL').trim().toUpperCase();
@@ -2820,6 +4364,715 @@ function actionAdminResolveSupportTicket_(payload) {
   }
 
   return portalErr_('SUPPORT_TICKET_NOT_FOUND', 'Support ticket not found.', { ticket_id: ticketId });
+}
+
+function summarizeRecentOps_(hours) {
+  const windowHours = Math.max(1, Number(hours || 24));
+  const sinceMs = Date.now() - (windowHours * 60 * 60 * 1000);
+  const d = readSheet('Ops_Log');
+
+  const out = {
+    window_hours: windowHours,
+    total_events: 0,
+    total_errors: 0,
+    claims_errors: 0,
+    auth_errors: 0,
+    action_failures: 0,
+    recent_errors: []
+  };
+
+  for (let i = d.rows.length - 1; i >= 0; i--) {
+    const row = d.rows[i];
+    const ts = new Date(getRowValue(row, d, 'ts', 0)).getTime();
+    if (!Number.isFinite(ts) || ts < sinceMs) continue;
+    out.total_events += 1;
+
+    const event = String(getRowValue(row, d, 'event', ''));
+    const details = parseJsonSafe_(String(getRowValue(row, d, 'details_json', '{}'))) || {};
+    const action = String(details.action || '');
+    const isErr = event.toLowerCase().indexOf('error') >= 0 || event.toLowerCase().indexOf('failed') >= 0;
+    if (isErr) {
+      out.total_errors += 1;
+      if (out.recent_errors.length < 25) {
+        out.recent_errors.push({
+          ts: getRowValue(row, d, 'ts', ''),
+          event: event,
+          details_json: String(getRowValue(row, d, 'details_json', ''))
+        });
+      }
+    }
+
+    if (event.indexOf('portal_action_auth_failed') >= 0) out.auth_errors += 1;
+    if (event.indexOf('portal_action_error') >= 0 || event.indexOf('portal_action_bad_request') >= 0) out.action_failures += 1;
+    if (event.toLowerCase().indexOf('claim') >= 0 || action === 'portal.submitClaim') out.claims_errors += isErr ? 1 : 0;
+  }
+
+  return out;
+}
+
+function collectContentValidationIssues_(options) {
+  const opts = options || {};
+  const checkLinks = opts.checkLinks === true;
+  const issues = [];
+
+  const lessons = listSheetObjects_('Lessons_Published', false);
+  const activities = listSheetObjects_('Activities_Published', false);
+  const outcomes = listSheetObjects_('Outcomes_Published', false);
+
+  const lessonByKey = new Map();
+  const duplicateLessonKeys = new Set();
+  lessons.forEach(function(row) {
+    const lk = String(row.lesson_key || '').trim();
+    if (!lk) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'lesson',
+        entity_id: '',
+        issue_code: 'MISSING_LESSON_KEY',
+        details_json: safeStringify(row)
+      });
+      return;
+    }
+    if (lessonByKey.has(lk)) duplicateLessonKeys.add(lk);
+    lessonByKey.set(lk, row);
+  });
+
+  duplicateLessonKeys.forEach(function(lessonKey) {
+    issues.push({
+      severity: 'ERROR',
+      entity: 'lesson',
+      entity_id: lessonKey,
+      issue_code: 'DUPLICATE_LESSON_KEY',
+      details_json: safeStringify({ lesson_key: lessonKey })
+    });
+  });
+
+  const outcomesByLesson = new Map();
+  outcomes.forEach(function(row) {
+    const lk = String(row.lesson_key || '').trim();
+    if (!lk) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'outcome',
+        entity_id: String(row.outcome_id || ''),
+        issue_code: 'OUTCOME_MISSING_LESSON_KEY',
+        details_json: safeStringify(row)
+      });
+      return;
+    }
+    outcomesByLesson.set(lk, (outcomesByLesson.get(lk) || 0) + 1);
+    if (!lessonByKey.has(lk)) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'outcome',
+        entity_id: String(row.outcome_id || ''),
+        issue_code: 'ORPHAN_OUTCOME_LESSON',
+        details_json: safeStringify({ lesson_key: lk })
+      });
+    }
+  });
+
+  lessons.forEach(function(row) {
+    const lk = String(row.lesson_key || '').trim();
+    if (!lk) return;
+    if ((outcomesByLesson.get(lk) || 0) < 1) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'lesson',
+        entity_id: lk,
+        issue_code: 'LESSON_WITHOUT_OUTCOME',
+        details_json: safeStringify({ lesson_key: lk })
+      });
+    }
+  });
+
+  activities.forEach(function(row) {
+    const activityId = String(row.activity_id || '');
+    const lk = String(row.lesson_key || '').trim();
+    const simUrl = String(row.sim_url || '').trim();
+    const claimPattern = String(row.claim_code_pattern || '').trim();
+
+    if (!lk) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'activity',
+        entity_id: activityId,
+        issue_code: 'ACTIVITY_MISSING_LESSON_KEY',
+        details_json: safeStringify(row)
+      });
+    } else if (!lessonByKey.has(lk)) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'activity',
+        entity_id: activityId,
+        issue_code: 'ORPHAN_ACTIVITY_LESSON',
+        details_json: safeStringify({ lesson_key: lk })
+      });
+    }
+
+    if (!simUrl) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'activity',
+        entity_id: activityId,
+        issue_code: 'MISSING_SIM_URL',
+        details_json: safeStringify({ lesson_key: lk })
+      });
+    } else if (!/^https?:\/\//i.test(simUrl)) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'activity',
+        entity_id: activityId,
+        issue_code: 'INVALID_SIM_URL',
+        details_json: safeStringify({ sim_url: simUrl })
+      });
+    } else if (checkLinks) {
+      try {
+        const res = UrlFetchApp.fetch(simUrl, {
+          muteHttpExceptions: true,
+          followRedirects: true
+        });
+        const code = Number(res.getResponseCode() || 0);
+        if (code < 200 || code >= 400) {
+          issues.push({
+            severity: 'WARN',
+            entity: 'activity',
+            entity_id: activityId,
+            issue_code: 'SIM_URL_HTTP_' + code,
+            details_json: safeStringify({ sim_url: simUrl, response_code: code })
+          });
+        }
+      } catch (err) {
+        issues.push({
+          severity: 'WARN',
+          entity: 'activity',
+          entity_id: activityId,
+          issue_code: 'SIM_URL_FETCH_FAILED',
+          details_json: safeStringify({ sim_url: simUrl, error: String(err && err.message || err) })
+        });
+      }
+    }
+
+    if (!claimPattern) {
+      issues.push({
+        severity: 'ERROR',
+        entity: 'activity',
+        entity_id: activityId,
+        issue_code: 'MISSING_CLAIM_CODE_PATTERN',
+        details_json: safeStringify({ lesson_key: lk })
+      });
+    }
+  });
+
+  const summary = {
+    total: issues.length,
+    errors: issues.filter(function(i) { return i.severity === 'ERROR'; }).length,
+    warnings: issues.filter(function(i) { return i.severity === 'WARN'; }).length
+  };
+
+  return {
+    summary: summary,
+    issues: issues
+  };
+}
+
+function writeContentValidationLog_(issues) {
+  const rows = Array.isArray(issues) ? issues : [];
+  const ts = _now();
+  for (let i = 0; i < rows.length; i++) {
+    appendObjectRow('Content_Validation_Log', {
+      ts: ts,
+      severity: String(rows[i].severity || 'WARN'),
+      entity: String(rows[i].entity || ''),
+      entity_id: String(rows[i].entity_id || ''),
+      issue_code: String(rows[i].issue_code || ''),
+      details_json: String(rows[i].details_json || '{}')
+    });
+  }
+}
+
+function getUserMetricRows_(days) {
+  const lookbackDays = Math.max(1, Number(days || 7));
+  const since = Date.now() - (lookbackDays * 24 * 60 * 60 * 1000);
+
+  const successByEmail = new Map();
+  const xpByEmail = new Map();
+  const failuresByEmail = new Map();
+  const rubricByEmail = new Map();
+
+  const ledger = readSheet('XP_Ledger');
+  for (let i = 0; i < ledger.rows.length; i++) {
+    const row = ledger.rows[i];
+    const ts = new Date(getRowValue(row, ledger, 'ts', 0)).getTime();
+    if (!Number.isFinite(ts) || ts < since) continue;
+
+    const email = String(getRowValue(row, ledger, 'email', '')).toLowerCase().trim();
+    const points = Number(getRowValue(row, ledger, 'points', 0)) || 0;
+    if (!email) continue;
+
+    xpByEmail.set(email, (xpByEmail.get(email) || 0) + points);
+    successByEmail.set(email, (successByEmail.get(email) || 0) + 1);
+  }
+
+  const ops = readSheet('Ops_Log');
+  for (let i = 0; i < ops.rows.length; i++) {
+    const row = ops.rows[i];
+    const ts = new Date(getRowValue(row, ops, 'ts', 0)).getTime();
+    if (!Number.isFinite(ts) || ts < since) continue;
+    const event = String(getRowValue(row, ops, 'event', ''));
+    const details = parseJsonSafe_(String(getRowValue(row, ops, 'details_json', '{}'))) || {};
+    const action = String(details.action || '');
+    if (action !== 'portal.submitClaim') continue;
+    if (event.indexOf('portal_action_error') < 0 && event.indexOf('portal_action_bad_request') < 0) continue;
+    const email = String(details.actor_email || '').toLowerCase().trim();
+    if (!email) continue;
+    failuresByEmail.set(email, (failuresByEmail.get(email) || 0) + 1);
+  }
+
+  const journal = readSheet('Decision_Journal');
+  for (let i = 0; i < journal.rows.length; i++) {
+    const row = journal.rows[i];
+    if (upper(getRowValue(row, journal, 'status', '')) !== 'SCORED') continue;
+    const scoredAt = new Date(getRowValue(row, journal, 'scored_at', 0)).getTime();
+    if (!Number.isFinite(scoredAt) || scoredAt < since) continue;
+
+    const email = String(getRowValue(row, journal, 'email', '')).toLowerCase().trim();
+    if (!email) continue;
+
+    const dq = Number(getRowValue(row, journal, 'score_decision_quality', 0)) || 0;
+    const fl = Number(getRowValue(row, journal, 'score_financial_logic', 0)) || 0;
+    const rm = Number(getRowValue(row, journal, 'score_risk_management', 0)) || 0;
+    const cm = Number(getRowValue(row, journal, 'score_communication', 0)) || 0;
+    const overall = (dq + fl + rm + cm) / 4;
+
+    if (!rubricByEmail.has(email)) {
+      rubricByEmail.set(email, { count: 0, sumOverall: 0, sumDq: 0, sumFl: 0, sumRm: 0, sumCm: 0 });
+    }
+    const agg = rubricByEmail.get(email);
+    agg.count += 1;
+    agg.sumOverall += overall;
+    agg.sumDq += dq;
+    agg.sumFl += fl;
+    agg.sumRm += rm;
+    agg.sumCm += cm;
+  }
+
+  return {
+    xpByEmail: xpByEmail,
+    successByEmail: successByEmail,
+    failuresByEmail: failuresByEmail,
+    rubricByEmail: rubricByEmail
+  };
+}
+
+function computeAtRiskRows_(options) {
+  const opts = options || {};
+  const lookbackDays = Math.max(1, Number(opts.lookback_days || 7));
+  const persistSnapshots = opts.persist_snapshots !== false;
+  const metrics = getUserMetricRows_(lookbackDays);
+  const users = readSheet('Users');
+  const now = Date.now();
+  const out = [];
+
+  for (let i = 0; i < users.rows.length; i++) {
+    const row = users.rows[i];
+    const email = String(getRowValue(row, users, 'email', '')).toLowerCase().trim();
+    if (!email) continue;
+
+    const xpVelocity = Number(metrics.xpByEmail.get(email) || 0);
+    const claimSuccess = Number(metrics.successByEmail.get(email) || 0);
+    const claimFail = Number(metrics.failuresByEmail.get(email) || 0);
+    const claimTotal = claimSuccess + claimFail;
+    const claimFailRate = claimTotal > 0 ? Number((claimFail / claimTotal).toFixed(4)) : 0;
+
+    const lastActive = new Date(getRowValue(row, users, 'last_active', 0)).getTime();
+    const inactivityDays = Number.isFinite(lastActive)
+      ? Math.max(0, Math.floor((now - lastActive) / (24 * 60 * 60 * 1000)))
+      : 999;
+
+    const rubricAgg = metrics.rubricByEmail.get(email) || { count: 0, sumOverall: 0, sumDq: 0, sumFl: 0, sumRm: 0, sumCm: 0 };
+    const rubricAvg = rubricAgg.count > 0 ? Number((rubricAgg.sumOverall / rubricAgg.count).toFixed(2)) : 0;
+    const avgDq = rubricAgg.count > 0 ? Number((rubricAgg.sumDq / rubricAgg.count).toFixed(2)) : 0;
+    const avgFl = rubricAgg.count > 0 ? Number((rubricAgg.sumFl / rubricAgg.count).toFixed(2)) : 0;
+    const avgRm = rubricAgg.count > 0 ? Number((rubricAgg.sumRm / rubricAgg.count).toFixed(2)) : 0;
+    const avgCm = rubricAgg.count > 0 ? Number((rubricAgg.sumCm / rubricAgg.count).toFixed(2)) : 0;
+
+    let riskScore = 0;
+    const drivers = [];
+    if (inactivityDays >= 7) {
+      riskScore += 2;
+      drivers.push('Inactive 7+ days');
+    }
+    if (xpVelocity < 100) {
+      riskScore += 2;
+      drivers.push('Low XP velocity (7d)');
+    }
+    if (rubricAvg > 0 && rubricAvg < 3.2) {
+      riskScore += 2;
+      drivers.push('Low rubric average');
+    }
+    if (claimFailRate >= 0.25) {
+      riskScore += 1;
+      drivers.push('High claim fail rate');
+    }
+
+    const riskTier = riskScore >= 5 ? 'AT_RISK' : (riskScore >= 3 ? 'WATCH' : 'ENGAGED');
+    const weakestDimension = weakestDimensionLabel_({
+      decision_quality: avgDq,
+      financial_logic: avgFl,
+      risk_management: avgRm,
+      communication: avgCm
+    });
+
+    out.push({
+      email: email,
+      display_name: String(getRowValue(row, users, 'display_name', '') || displayFromEmail(email)),
+      xp_velocity_7d: xpVelocity,
+      claims_success_7d: claimSuccess,
+      claims_fail_7d: claimFail,
+      claim_fail_rate_7d: claimFailRate,
+      rubric_overall_avg: rubricAvg,
+      rubric_count_7d: rubricAgg.count,
+      inactivity_days: inactivityDays,
+      risk_score: riskScore,
+      risk_tier: riskTier,
+      weakest_dimension: weakestDimension,
+      drivers: drivers,
+      averages: {
+        decision_quality: avgDq,
+        financial_logic: avgFl,
+        risk_management: avgRm,
+        communication: avgCm
+      }
+    });
+  }
+
+  out.sort(function(a, b) {
+    if (a.risk_score !== b.risk_score) return b.risk_score - a.risk_score;
+    if (a.inactivity_days !== b.inactivity_days) return b.inactivity_days - a.inactivity_days;
+    return String(a.email).localeCompare(String(b.email));
+  });
+
+  if (persistSnapshots) {
+    const ts = _now();
+    out.forEach(function(row) {
+      appendObjectRow('Analytics_Snapshots', {
+        ts: ts,
+        student_email: row.email,
+        xp_velocity_7d: row.xp_velocity_7d,
+        claim_fail_rate_7d: row.claim_fail_rate_7d,
+        rubric_overall_avg: row.rubric_overall_avg,
+        risk_tier: row.risk_tier,
+        drivers_json: safeStringify(row.drivers)
+      });
+    });
+  }
+
+  return out;
+}
+
+function actionGetHealth_(payload) {
+  const actorEmail = String(payload.actorEmail || '').toLowerCase().trim();
+  const secretConfigured = !!getPortalSharedSecret_();
+  let schemaOk = true;
+  let schemaError = '';
+  try {
+    ensureSchema();
+  } catch (err) {
+    schemaOk = false;
+    schemaError = String(err && err.message || err);
+  }
+
+  const ops = summarizeRecentOps_(24);
+  const readiness = schemaOk && secretConfigured;
+  return portalOk_('HEALTH_OK', 'Portal backend health snapshot.', {
+    ts: nowIso_(),
+    actor_email: actorEmail,
+    status: readiness ? 'HEALTHY' : 'DEGRADED',
+    checks: {
+      shared_secret_configured: secretConfigured,
+      schema_ok: schemaOk,
+      schema_error: schemaError || '',
+      apps_script_runtime: true
+    },
+    errors_24h: {
+      total_errors: ops.total_errors,
+      claims_errors: ops.claims_errors,
+      auth_errors: ops.auth_errors,
+      action_failures: ops.action_failures
+    }
+  });
+}
+
+function actionAdminGetLaunchReadiness_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const health = actionGetHealth_(payload).data;
+  const validation = collectContentValidationIssues_({ checkLinks: false });
+  const support = readSheet('Support_Tickets');
+  const openSupport = support.rows.filter(function(row) {
+    return upper(getRowValue(row, support, 'status', 'OPEN')) === 'OPEN';
+  }).length;
+
+  const checks = [
+    {
+      id: 'shared_secret',
+      label: 'Apps Script shared secret configured',
+      status: health.checks.shared_secret_configured ? 'PASS' : 'FAIL',
+      detail: health.checks.shared_secret_configured ? 'Configured' : 'Missing PORTAL_SHARED_SECRET'
+    },
+    {
+      id: 'schema',
+      label: 'Sheet schema integrity',
+      status: health.checks.schema_ok ? 'PASS' : 'FAIL',
+      detail: health.checks.schema_ok ? 'All required headers present' : health.checks.schema_error
+    },
+    {
+      id: 'error_budget',
+      label: 'Error budget (last 24h)',
+      status: health.errors_24h.total_errors <= 5 ? 'PASS' : 'WARN',
+      detail: 'Errors: ' + health.errors_24h.total_errors
+    },
+    {
+      id: 'content_validation',
+      label: 'Published curriculum validation',
+      status: validation.summary.errors === 0 ? 'PASS' : 'FAIL',
+      detail: 'Errors: ' + validation.summary.errors + ', Warnings: ' + validation.summary.warnings
+    },
+    {
+      id: 'support_load',
+      label: 'Support queue pressure',
+      status: openSupport <= 15 ? 'PASS' : 'WARN',
+      detail: 'Open tickets: ' + openSupport
+    }
+  ];
+
+  const hasFail = checks.some(function(c) { return c.status === 'FAIL'; });
+  const hasWarn = checks.some(function(c) { return c.status === 'WARN'; });
+  const overall = hasFail ? 'NOT_READY' : (hasWarn ? 'READY_WITH_WARNINGS' : 'READY');
+
+  return portalOk_('LAUNCH_READINESS_OK', 'Launch readiness evaluated.', {
+    overall_status: overall,
+    checks: checks,
+    health: health,
+    validation_summary: validation.summary
+  });
+}
+
+function actionAdminRunSmokeChecks_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const actorEmail = assertActorEmail_(payload);
+  const checks = [];
+
+  function pushCheck(id, label, fn) {
+    try {
+      const detail = fn();
+      checks.push({ id: id, label: label, status: 'PASS', detail: detail || 'OK' });
+    } catch (err) {
+      checks.push({
+        id: id,
+        label: label,
+        status: 'FAIL',
+        detail: String(err && err.message || err)
+      });
+    }
+  }
+
+  pushCheck('dashboard', 'Dashboard payload generation', function() {
+    const data = getDashboardData_(actorEmail);
+    if (!data || !data.user) throw new Error('Dashboard user payload missing');
+    return 'User payload present';
+  });
+
+  pushCheck('published_curriculum', 'Published curriculum availability', function() {
+    const data = actionGetPublishedCurriculum_({ data: {} }).data;
+    if (!data || !Array.isArray(data.activities)) throw new Error('Published activities not available');
+    return 'Activities: ' + data.activities.length;
+  });
+
+  pushCheck('claim_codes', 'Claim code table readable', function() {
+    const d = readSheet('Claim_Codes');
+    return 'Claim rows: ' + d.rows.length;
+  });
+
+  pushCheck('raffle_state', 'Raffle state readable', function() {
+    const active = getActiveRaffle_();
+    return active ? ('Active raffle: ' + active.raffle_id) : 'No active raffle (acceptable)';
+  });
+
+  pushCheck('journal_queue', 'Journal queue readable', function() {
+    const rows = actionAdminGetJournalReviewQueue_(payload).data || [];
+    return 'Pending journals: ' + rows.length;
+  });
+
+  const failed = checks.filter(function(c) { return c.status === 'FAIL'; }).length;
+  const overall = failed ? 'FAIL' : 'PASS';
+  return portalOk_('SMOKE_RUN_OK', 'Smoke checks completed.', {
+    overall: overall,
+    checks: checks,
+    failed: failed
+  });
+}
+
+function actionAdminGetContentValidation_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const checkLinks = data.check_links === true;
+  const persist = data.persist !== false;
+  const result = collectContentValidationIssues_({ checkLinks: checkLinks });
+  if (persist && result.issues.length) {
+    writeContentValidationLog_(result.issues.slice(0, 500));
+  }
+  return portalOk_('CONTENT_VALIDATION_OK', 'Content validation completed.', {
+    summary: result.summary,
+    issues: result.issues.slice(0, 500),
+    check_links: checkLinks
+  });
+}
+
+function actionAdminGetAtRiskStudents_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const lookbackDays = Math.max(1, Number(data.lookback_days || 7));
+  const persistSnapshots = data.persist_snapshots !== false;
+  const rows = computeAtRiskRows_({
+    lookback_days: lookbackDays,
+    persist_snapshots: persistSnapshots
+  });
+  return portalOk_('AT_RISK_STUDENTS_OK', 'At-risk segmentation generated.', {
+    lookback_days: lookbackDays,
+    summary: {
+      at_risk: rows.filter(function(r) { return r.risk_tier === 'AT_RISK'; }).length,
+      watch: rows.filter(function(r) { return r.risk_tier === 'WATCH'; }).length,
+      engaged: rows.filter(function(r) { return r.risk_tier === 'ENGAGED'; }).length
+    },
+    rows: rows
+  });
+}
+
+function actionAdminGetCohortTrends_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const weeksBack = Math.max(4, Math.min(26, Number(data.weeks_back || 8)));
+  const weekMap = new Map();
+
+  for (let w = weeksBack - 1; w >= 0; w--) {
+    const d = new Date();
+    d.setDate(d.getDate() - (w * 7));
+    const key = weekBucketNY_(d);
+    weekMap.set(key, {
+      week: key,
+      xp_total: 0,
+      claims_success: 0,
+      claims_fail: 0,
+      claim_fail_rate: 0,
+      rubric_overall_avg: 0,
+      rubric_count: 0
+    });
+  }
+
+  const ledger = readSheet('XP_Ledger');
+  for (let i = 0; i < ledger.rows.length; i++) {
+    const row = ledger.rows[i];
+    const key = weekBucketNY_(getRowValue(row, ledger, 'ts', ''));
+    if (!weekMap.has(key)) continue;
+    const points = Number(getRowValue(row, ledger, 'points', 0)) || 0;
+    const t = weekMap.get(key);
+    t.xp_total += points;
+    t.claims_success += 1;
+  }
+
+  const ops = readSheet('Ops_Log');
+  for (let i = 0; i < ops.rows.length; i++) {
+    const row = ops.rows[i];
+    const key = weekBucketNY_(getRowValue(row, ops, 'ts', ''));
+    if (!weekMap.has(key)) continue;
+    const event = String(getRowValue(row, ops, 'event', ''));
+    const details = parseJsonSafe_(String(getRowValue(row, ops, 'details_json', '{}'))) || {};
+    if (String(details.action || '') !== 'portal.submitClaim') continue;
+    if (event.indexOf('portal_action_error') < 0 && event.indexOf('portal_action_bad_request') < 0) continue;
+    weekMap.get(key).claims_fail += 1;
+  }
+
+  const journal = readSheet('Decision_Journal');
+  for (let i = 0; i < journal.rows.length; i++) {
+    const row = journal.rows[i];
+    if (upper(getRowValue(row, journal, 'status', '')) !== 'SCORED') continue;
+    const key = weekBucketNY_(getRowValue(row, journal, 'scored_at', ''));
+    if (!weekMap.has(key)) continue;
+
+    const dq = Number(getRowValue(row, journal, 'score_decision_quality', 0)) || 0;
+    const fl = Number(getRowValue(row, journal, 'score_financial_logic', 0)) || 0;
+    const rm = Number(getRowValue(row, journal, 'score_risk_management', 0)) || 0;
+    const cm = Number(getRowValue(row, journal, 'score_communication', 0)) || 0;
+    const overall = (dq + fl + rm + cm) / 4;
+
+    const t = weekMap.get(key);
+    t.rubric_overall_avg += overall;
+    t.rubric_count += 1;
+  }
+
+  const series = Array.from(weekMap.values()).sort(function(a, b) {
+    return String(a.week).localeCompare(String(b.week));
+  }).map(function(t) {
+    const claimTotal = t.claims_success + t.claims_fail;
+    return {
+      week: t.week,
+      xp_total: t.xp_total,
+      claims_success: t.claims_success,
+      claims_fail: t.claims_fail,
+      claim_fail_rate: claimTotal ? Number((t.claims_fail / claimTotal).toFixed(4)) : 0,
+      rubric_overall_avg: t.rubric_count ? Number((t.rubric_overall_avg / t.rubric_count).toFixed(2)) : 0,
+      rubric_count: t.rubric_count
+    };
+  });
+
+  return portalOk_('COHORT_TRENDS_OK', 'Cohort trends generated.', {
+    weeks_back: weeksBack,
+    series: series
+  });
+}
+
+function actionAdminGetInterventionQueue_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const atRisk = computeAtRiskRows_({
+    lookback_days: 7,
+    persist_snapshots: false
+  });
+  const templates = listSheetObjects_('Intervention_Templates', false).filter(function(row) {
+    return String(row.enabled || 'TRUE').toLowerCase() !== 'false';
+  });
+
+  function templateForDimension(label) {
+    const key = String(label || '').toUpperCase().replace(/ /g, '_');
+    return templates.find(function(t) { return upper(t.dimension || '') === key; }) || null;
+  }
+
+  const queue = atRisk
+    .filter(function(row) { return row.risk_tier !== 'ENGAGED'; })
+    .map(function(row) {
+      const template = templateForDimension(row.weakest_dimension);
+      const priority = row.risk_score * 10 + row.inactivity_days + Math.round(row.claim_fail_rate_7d * 10);
+      return {
+        email: row.email,
+        display_name: row.display_name,
+        risk_tier: row.risk_tier,
+        risk_score: row.risk_score,
+        inactivity_days: row.inactivity_days,
+        weakest_dimension: row.weakest_dimension,
+        drivers: row.drivers,
+        priority_score: priority,
+        recommended_template_id: template ? String(template.template_id || '') : '',
+        recommended_title: template ? String(template.title || '') : '',
+        recommended_message: template ? String(template.message_template || '') : 'Schedule targeted coaching check-in.',
+        next_steps: template ? String(template.next_steps || '') : ''
+      };
+    })
+    .sort(function(a, b) { return b.priority_score - a.priority_score; });
+
+  return portalOk_('INTERVENTION_QUEUE_OK', 'Intervention queue generated.', {
+    total: queue.length,
+    queue: queue
+  });
 }
 
 function actionGetStatus_(payload) {
@@ -3190,14 +5443,48 @@ function handlePortalActionRequest_(payload) {
     }
 
     const action = String(payload.action || '').trim();
+    const requestId = String(payload.requestId || '').trim();
+    const actorEmail = String(payload.actorEmail || '').toLowerCase().trim();
 
     // Invite activation is the one action allowed before an existing portal user row exists.
     if (action !== 'portal.activateInvite') {
       ensureActorAuthorized_(payload);
     }
 
+    const isIdempotent = PORTAL_IDEMPOTENT_ACTIONS.has(action);
+    if (isIdempotent) {
+      const existing = getRequestDedupeRecord_(requestId, action, actorEmail);
+      if (existing) {
+        if (existing.status === 'SUCCESS') {
+          return portalOk_('IDEMPOTENT_REPLAY', 'Request already processed.', {
+            request_id: requestId,
+            action: action,
+            replay: true,
+            response_hash: existing.response_hash
+          });
+        }
+        if (existing.status === 'IN_PROGRESS') {
+          return portalErr_('REQUEST_IN_PROGRESS', 'An identical request is already being processed.', {
+            request_id: requestId,
+            action: action
+          });
+        }
+        if (existing.status === 'FAILED') {
+          return portalErr_('REQUEST_ALREADY_FAILED', 'This request_id already failed. Use a new request.', {
+            request_id: requestId,
+            action: action,
+            response_hash: existing.response_hash
+          });
+        }
+      } else {
+        markRequestDedupeInProgress_(requestId, action, actorEmail);
+      }
+    }
+
     const handlerMap = {
+      'portal.getHealth': actionGetHealth_,
       'portal.getDashboard': actionGetDashboard_,
+      'portal.getHomeFeed': actionGetHomeFeed_,
       'portal.getSession': actionGetSession_,
       'portal.getProgress': actionGetProgress_,
       'portal.submitClaim': submitClaimFromPortal_,
@@ -3216,6 +5503,15 @@ function handlePortalActionRequest_(payload) {
       'portal.getAssignments': actionGetAssignments_,
       'portal.markAssignmentComplete': actionMarkAssignmentComplete_,
       'portal.getCalendar': actionGetCalendar_,
+      'portal.getActiveSeason': actionGetActiveSeason_,
+      'portal.getLeagueStandings': actionGetLeagueStandings_,
+      'portal.getMyPod': actionGetMyPod_,
+      'portal.sendPodKudos': actionSendPodKudos_,
+      'portal.getActiveEvents': actionGetActiveEvents_,
+      'portal.submitEventEntry': actionSubmitEventEntry_,
+      'portal.getMyQuests': actionGetMyQuests_,
+      'portal.claimQuestReward': actionClaimQuestReward_,
+      'portal.getMyRewards': actionGetMyRewards_,
       'portal.getRaffleBalance': actionGetRaffleBalance_,
       'portal.getActiveRaffle': actionGetActiveRaffle_,
       'portal.enterRaffle': actionEnterRaffle_,
@@ -3227,6 +5523,9 @@ function handlePortalActionRequest_(payload) {
       'portal.getActivityHistory': actionGetActivityHistory_,
 
       'portal.admin.getOverview': actionAdminOverview_,
+      'portal.admin.getLaunchReadiness': actionAdminGetLaunchReadiness_,
+      'portal.admin.runSmokeChecks': actionAdminRunSmokeChecks_,
+      'portal.admin.getContentValidation': actionAdminGetContentValidation_,
       'portal.admin.getStudents': actionAdminStudents_,
       'portal.admin.getDraftPrograms': actionAdminGetDraftPrograms_,
       'portal.admin.createDraftProgram': actionAdminCreateDraftProgram_,
@@ -3250,10 +5549,23 @@ function handlePortalActionRequest_(payload) {
       'portal.admin.scoreJournalEntry': actionAdminScoreJournalEntry_,
       'portal.admin.getMasteryHeatmap': actionAdminGetMasteryHeatmap_,
       'portal.admin.getDecisionTrends': actionAdminGetDecisionTrends_,
+      'portal.admin.getAtRiskStudents': actionAdminGetAtRiskStudents_,
+      'portal.admin.getCohortTrends': actionAdminGetCohortTrends_,
+      'portal.admin.getInterventionQueue': actionAdminGetInterventionQueue_,
       'portal.admin.getInterventionTemplates': actionAdminGetInterventionTemplates_,
       'portal.admin.getNegotiationScorecards': actionAdminGetNegotiationScorecards_,
       'portal.admin.getSupportTickets': actionAdminGetSupportTickets_,
       'portal.admin.resolveSupportTicket': actionAdminResolveSupportTicket_,
+      'portal.admin.createSeason': actionAdminCreateSeason_,
+      'portal.admin.listSeasons': actionAdminListSeasons_,
+      'portal.admin.upsertEvent': actionAdminUpsertEvent_,
+      'portal.admin.listEvents': actionAdminListEvents_,
+      'portal.admin.assignPods': actionAdminAssignPods_,
+      'portal.admin.listPods': actionAdminListPods_,
+      'portal.admin.upsertQuest': actionAdminUpsertQuest_,
+      'portal.admin.listQuests': actionAdminListQuests_,
+      'portal.admin.getEngagementOverview': actionAdminGetEngagementOverview_,
+      'portal.admin.getEngagementDropoff': actionAdminGetEngagementDropoff_,
       'portal.admin.createInvite': actionAdminCreateInvite_,
       'portal.admin.getActionQueue': actionAdminActionQueue_,
       'portal.admin.runAction': actionAdminRunActionQueue_,
@@ -3275,6 +5587,9 @@ function handlePortalActionRequest_(payload) {
     }
 
     const result = handler(payload);
+    if (isIdempotent) {
+      finalizeRequestDedupe_(requestId, action, actorEmail, result && result.ok ? 'SUCCESS' : 'FAILED', result);
+    }
 
     logOps('portal_action_ok', {
       action: action,
@@ -3294,6 +5609,17 @@ function handlePortalActionRequest_(payload) {
       error: msg,
       latency_ms: Date.now() - startedAt
     });
+
+    const failedAction = String(payload && payload.action || '').trim();
+    const failedRequestId = String(payload && payload.requestId || '').trim();
+    const failedEmail = String(payload && payload.actorEmail || '').toLowerCase().trim();
+    if (PORTAL_IDEMPOTENT_ACTIONS.has(failedAction) && failedRequestId) {
+      finalizeRequestDedupe_(failedRequestId, failedAction, failedEmail, 'FAILED', {
+        ok: false,
+        code: 'PORTAL_ACTION_ERROR',
+        message: msg
+      });
+    }
 
     return portalErr_('PORTAL_ACTION_ERROR', msg, null);
   }

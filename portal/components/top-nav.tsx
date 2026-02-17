@@ -3,7 +3,11 @@ import { AuthStatus } from "@/components/auth-status";
 
 const studentLinks = [
   ["Onboarding", "/onboarding"],
+  ["Home", "/home"],
   ["Dashboard", "/dashboard"],
+  ["Events", "/events"],
+  ["Pods", "/pods"],
+  ["Quests", "/quests"],
   ["Activities", "/activities"],
   ["Claim", "/claim"],
   ["Journal", "/journal"],
@@ -24,6 +28,14 @@ const studentLinks = [
 
 const adminLinks = [
   ["Overview", "/admin/overview"],
+  ["Launch", "/admin/launch"],
+  ["Seasons", "/admin/seasons"],
+  ["Events", "/admin/events"],
+  ["Pods", "/admin/pods"],
+  ["Quests", "/admin/quests"],
+  ["Engagement", "/admin/engagement/overview"],
+  ["Dropoff", "/admin/engagement/dropoff"],
+  ["Content Validation", "/admin/content/validation"],
   ["Curriculum", "/admin/curriculum"],
   ["Programs", "/admin/curriculum/programs"],
   ["Modules", "/admin/curriculum/modules"],
@@ -33,6 +45,9 @@ const adminLinks = [
   ["Publish", "/admin/curriculum/publish"],
   ["Mastery", "/admin/analytics/mastery"],
   ["Decision Trends", "/admin/analytics/decision-trends"],
+  ["At-Risk", "/admin/analytics/at-risk"],
+  ["Cohort Trends", "/admin/analytics/cohort-trends"],
+  ["Intervention Queue", "/admin/interventions/queue"],
   ["Interventions", "/admin/interventions/templates"],
   ["Negotiation", "/admin/negotiation/scorecards"],
   ["Journal Review", "/admin/journal/review"],

@@ -11,18 +11,20 @@ function normalizeRole(value: string | undefined): Role {
 
 export async function getActorFromRequest(): Promise<PortalActor | null> {
   const h = await headers();
+  const isProd = process.env.NODE_ENV === "production";
+  const allowDevFallback = !isProd;
 
   // Local/dev fallback so backend can be tested before auth wiring is complete.
   const devEmail = h.get("x-portal-email");
   const devRole = h.get("x-portal-role");
-  if (devEmail) {
+  if (allowDevFallback && devEmail) {
     return {
       email: devEmail.toLowerCase(),
       role: normalizeRole(devRole || "STUDENT")
     };
   }
 
-  if (process.env.DEV_ACTOR_EMAIL) {
+  if (allowDevFallback && process.env.DEV_ACTOR_EMAIL) {
     return {
       email: String(process.env.DEV_ACTOR_EMAIL).toLowerCase(),
       role: normalizeRole(process.env.DEV_ACTOR_ROLE || "ADMIN")

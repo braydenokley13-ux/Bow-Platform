@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -30,17 +31,45 @@ interface OverviewPayload {
   };
 }
 
+interface LaunchReadinessPayload {
+  ok: boolean;
+  data: {
+    overall_status: "READY" | "READY_WITH_WARNINGS" | "NOT_READY";
+    checks: Array<{
+      id: string;
+      label: string;
+      status: "PASS" | "WARN" | "FAIL";
+      detail: string;
+    }>;
+  };
+}
+
 export default function AdminOverviewPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<OverviewPayload | null>(null);
+  const [launchStatus, setLaunchStatus] = useState<LaunchReadinessPayload["data"] | null>(null);
 
-  async function load() {
+  async function loadEverything() {
     setBusy(true);
     setError(null);
     try {
-      const json = await apiFetch<OverviewPayload>("/api/admin/overview");
-      setPayload(json);
+      const [overviewResult, readinessResult] = await Promise.allSettled([
+        apiFetch<OverviewPayload>("/api/admin/overview"),
+        apiFetch<LaunchReadinessPayload>("/api/admin/launch-readiness")
+      ]);
+
+      if (overviewResult.status === "fulfilled") {
+        setPayload(overviewResult.value);
+      } else {
+        throw overviewResult.reason;
+      }
+
+      if (readinessResult.status === "fulfilled") {
+        setLaunchStatus(readinessResult.value.data);
+      } else {
+        setLaunchStatus(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load overview");
     } finally {
@@ -49,7 +78,7 @@ export default function AdminOverviewPage() {
   }
 
   useEffect(() => {
-    void load();
+    void loadEverything();
   }, []);
 
   const d = payload?.data;
@@ -59,7 +88,7 @@ export default function AdminOverviewPage() {
       <PageTitle title="Admin Overview" subtitle="Class operations, engagement, and risk monitoring" />
 
       <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={() => void load()} disabled={busy}>
+        <button onClick={() => void loadEverything()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh overview"}
         </button>
         {busy ? <span className="pill">Loading latest data...</span> : null}
@@ -71,7 +100,7 @@ export default function AdminOverviewPage() {
             <strong>Overview load failed:</strong> {error}
           </div>
           <div style={{ marginTop: 10 }}>
-            <button onClick={() => void load()} className="secondary">
+            <button onClick={() => void loadEverything()} className="secondary">
               Retry
             </button>
           </div>
@@ -112,6 +141,32 @@ export default function AdminOverviewPage() {
 
       <section className="card" style={{ display: "grid", gap: 8 }}>
         <h2 style={{ margin: 0, fontSize: 18 }}>Launch Health (Last {d?.launch_health.window_hours ?? 24}h)</h2>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span className="pill">Readiness: {launchStatus?.overall_status || "UNKNOWN"}</span>
+          <Link href="/admin/launch">Open Launch Center</Link>
+        </div>
+        {launchStatus?.checks?.length ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Check</th>
+                  <th>Status</th>
+                  <th>Detail</th>
+                </tr>
+              </thead>
+              <tbody>
+                {launchStatus.checks.slice(0, 3).map((c) => (
+                  <tr key={c.id}>
+                    <td>{c.label}</td>
+                    <td>{c.status}</td>
+                    <td>{c.detail}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
         <div className="grid grid-2">
           <article className="card" style={{ padding: 12 }}>
             <div className="kicker">Claim Errors</div>

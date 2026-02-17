@@ -22,7 +22,8 @@ export async function apiFetch<T = unknown>(
     }
   }
 
-  if (!headers.has("x-portal-email") && process.env.NEXT_PUBLIC_DEV_ACTOR_EMAIL) {
+  const allowDevHeaders = process.env.NODE_ENV !== "production";
+  if (allowDevHeaders && !headers.has("x-portal-email") && process.env.NEXT_PUBLIC_DEV_ACTOR_EMAIL) {
     headers.set("x-portal-email", process.env.NEXT_PUBLIC_DEV_ACTOR_EMAIL);
     headers.set("x-portal-role", process.env.NEXT_PUBLIC_DEV_ACTOR_ROLE || "ADMIN");
   }
