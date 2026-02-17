@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { firebaseAuth } from "@/lib/firebase-client";
+import { getFirebaseAuth } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/client-api";
 
 interface SessionPayload {
@@ -35,7 +35,14 @@ export function SessionGuard({
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    return onAuthStateChanged(firebaseAuth, (user) => {
+    const auth = getFirebaseAuth();
+    if (!auth) {
+      setHasFirebaseUser(false);
+      setAuthReady(true);
+      return;
+    }
+
+    return onAuthStateChanged(auth, (user) => {
       setHasFirebaseUser(Boolean(user));
       setAuthReady(true);
     });
