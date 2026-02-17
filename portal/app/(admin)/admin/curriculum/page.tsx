@@ -199,7 +199,7 @@ export default function AdminCurriculumHomePage() {
           <input value={publishNotes} onChange={(e) => setPublishNotes(e.target.value)} />
         </label>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => void publishNow()}>Publish Draft -> Student</button>
+          <button onClick={() => void publishNow()}>Publish Draft {"->"} Student</button>
         </div>
 
         <label>
