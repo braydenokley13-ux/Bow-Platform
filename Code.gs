@@ -138,7 +138,320 @@ const SHEET_SCHEMAS = {
     'source',
     'notes'
   ],
-  Ops_Log: ['ts', 'event', 'details_json']
+  Ops_Log: ['ts', 'event', 'details_json'],
+  Portal_Users: [
+    'email',
+    'role',
+    'status',
+    'firebase_uid',
+    'invited_at',
+    'activated_at',
+    'last_login_at'
+  ],
+  Portal_Invites: [
+    'invite_id',
+    'email',
+    'role',
+    'issued_by',
+    'issued_at',
+    'expires_at',
+    'status'
+  ],
+  Assignments: [
+    'assignment_id',
+    'track',
+    'module',
+    'title',
+    'description',
+    'due_at',
+    'resource_url',
+    'enabled'
+  ],
+  Assignment_Submissions: [
+    'assignment_id',
+    'email',
+    'status',
+    'completed_at',
+    'notes'
+  ],
+  Calendar_Events: [
+    'event_id',
+    'title',
+    'starts_at',
+    'ends_at',
+    'location',
+    'meeting_url',
+    'notes',
+    'enabled'
+  ],
+  Action_Queue: [
+    'action_id',
+    'type',
+    'target_email',
+    'payload_json',
+    'status',
+    'created_at',
+    'completed_at',
+    'created_by'
+  ],
+  Raffles: [
+    'raffle_id',
+    'title',
+    'prize',
+    'opens_at',
+    'closes_at',
+    'status',
+    'winner_email',
+    'winner_drawn_at',
+    'created_by',
+    'created_at'
+  ],
+  Raffle_Entries: [
+    'entry_id',
+    'raffle_id',
+    'email',
+    'tickets_spent',
+    'created_at'
+  ],
+  Raffle_Ticket_Ledger: [
+    'ts',
+    'email',
+    'delta_tickets',
+    'reason',
+    'source_ref',
+    'balance_after'
+  ],
+  Notifications: [
+    'notification_id',
+    'email',
+    'title',
+    'body',
+    'kind',
+    'status',
+    'created_at',
+    'read_at'
+  ],
+  Help_FAQ: [
+    'faq_id',
+    'question',
+    'answer',
+    'audience',
+    'enabled',
+    'sort_order'
+  ],
+  Support_Tickets: [
+    'ticket_id',
+    'email',
+    'category',
+    'subject',
+    'message',
+    'page_context',
+    'status',
+    'priority',
+    'created_at',
+    'resolved_at',
+    'resolved_by',
+    'resolution_note'
+  ],
+  Programs_Draft: [
+    'program_id',
+    'name',
+    'version_label',
+    'age_group',
+    'learning_goals_json',
+    'status',
+    'sort_order',
+    'updated_at',
+    'updated_by'
+  ],
+  Modules_Draft: [
+    'module_id',
+    'program_id',
+    'module_title',
+    'core_competency',
+    'description',
+    'sort_order',
+    'status',
+    'updated_at',
+    'updated_by'
+  ],
+  Lessons_Draft: [
+    'lesson_key',
+    'program_id',
+    'module_id',
+    'lesson_id',
+    'lesson_title',
+    'concept_intro',
+    'case_context',
+    'decision_prompt',
+    'debrief_framework',
+    'sort_order',
+    'status',
+    'updated_at',
+    'updated_by'
+  ],
+  Activities_Draft: [
+    'activity_id',
+    'lesson_key',
+    'track',
+    'module_id',
+    'lesson_id',
+    'activity_title',
+    'activity_type',
+    'sim_url',
+    'claim_code_pattern',
+    'estimated_minutes',
+    'role_focus',
+    'difficulty',
+    'sort_order',
+    'status',
+    'updated_at',
+    'updated_by'
+  ],
+  Outcomes_Draft: [
+    'outcome_id',
+    'lesson_key',
+    'module_id',
+    'skill_name',
+    'framework_name',
+    'mastery_definition',
+    'assessment_hint',
+    'sort_order',
+    'status',
+    'updated_at',
+    'updated_by'
+  ],
+  Programs_Published: [
+    'program_id',
+    'name',
+    'version_label',
+    'age_group',
+    'learning_goals_json',
+    'status',
+    'sort_order',
+    'publish_batch_id',
+    'published_at',
+    'published_by'
+  ],
+  Modules_Published: [
+    'module_id',
+    'program_id',
+    'module_title',
+    'core_competency',
+    'description',
+    'sort_order',
+    'status',
+    'publish_batch_id',
+    'published_at',
+    'published_by'
+  ],
+  Lessons_Published: [
+    'lesson_key',
+    'program_id',
+    'module_id',
+    'lesson_id',
+    'lesson_title',
+    'concept_intro',
+    'case_context',
+    'decision_prompt',
+    'debrief_framework',
+    'sort_order',
+    'status',
+    'publish_batch_id',
+    'published_at',
+    'published_by'
+  ],
+  Activities_Published: [
+    'activity_id',
+    'lesson_key',
+    'track',
+    'module_id',
+    'lesson_id',
+    'activity_title',
+    'activity_type',
+    'sim_url',
+    'claim_code_pattern',
+    'estimated_minutes',
+    'role_focus',
+    'difficulty',
+    'sort_order',
+    'status',
+    'publish_batch_id',
+    'published_at',
+    'published_by'
+  ],
+  Outcomes_Published: [
+    'outcome_id',
+    'lesson_key',
+    'module_id',
+    'skill_name',
+    'framework_name',
+    'mastery_definition',
+    'assessment_hint',
+    'sort_order',
+    'status',
+    'publish_batch_id',
+    'published_at',
+    'published_by'
+  ],
+  Curriculum_Publish_Log: [
+    'publish_batch_id',
+    'program_id',
+    'published_at',
+    'published_by',
+    'notes',
+    'rollback_of_batch_id',
+    'snapshot_json'
+  ],
+  Decision_Journal: [
+    'entry_id',
+    'email',
+    'claim_code',
+    'program_id',
+    'module_id',
+    'lesson_id',
+    'lesson_key',
+    'role',
+    'decision_text',
+    'rationale_text',
+    'outcome_text',
+    'status',
+    'submitted_at',
+    'scored_at',
+    'scored_by',
+    'score_decision_quality',
+    'score_financial_logic',
+    'score_risk_management',
+    'score_communication',
+    'coach_note'
+  ],
+  Strategic_Transcripts: [
+    'transcript_id',
+    'email',
+    'program_id',
+    'generated_at',
+    'summary_json',
+    'pdf_file_id',
+    'verify_status',
+    'version'
+  ],
+  Transcript_Verify_Index: [
+    'transcript_id',
+    'email',
+    'issued_at',
+    'status',
+    'hash',
+    'expires_at'
+  ],
+  Intervention_Templates: [
+    'template_id',
+    'dimension',
+    'title',
+    'message_template',
+    'next_steps',
+    'enabled',
+    'sort_order'
+  ]
 };
 
 const HEADER_ALIASES = {
@@ -370,9 +683,13 @@ function verifyCriticalSchema() {
   });
 
   const ss = _ss();
-  [FINISH_TAB, STORE_TAB].forEach(function(tab) {
+  [FINISH_TAB].forEach(function(tab) {
     if (!ss.getSheetByName(tab)) missing.push('Missing tab: ' + tab);
   });
+
+  if (!ss.getSheetByName(STORE_TAB)) {
+    logOps('schema_warning_missing_optional_tab', { tab: STORE_TAB });
+  }
 
   if (missing.length) {
     const msg = 'Critical schema check failed: ' + missing.join(', ');
@@ -1682,6 +1999,9 @@ function setup() {
     .create();
 
   seedTemplatesIfMissing();
+  if (typeof seedPortalDefaults_ === 'function') {
+    seedPortalDefaults_();
+  }
   logOps('setup_completed', {
     finishFormId: FINISH_FORM_ID,
     storeFormId: STORE_FORM_ID,
@@ -2020,6 +2340,23 @@ function doPost(e) {
 
     const raw = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
     const data = JSON.parse(raw);
+
+    if (data && data.action) {
+      if (typeof handlePortalActionRequest_ !== 'function') {
+        return ContentService
+          .createTextOutput(JSON.stringify({
+            ok: false,
+            code: 'PORTAL_ACTION_ROUTER_MISSING',
+            message: 'Portal action router is not deployed.',
+            data: null
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      const actionResult = handlePortalActionRequest_(data);
+      return ContentService
+        .createTextOutput(JSON.stringify(actionResult))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     const required = ['email', 'tier', 'level', 'score'];
     for (let i = 0; i < required.length; i++) {
