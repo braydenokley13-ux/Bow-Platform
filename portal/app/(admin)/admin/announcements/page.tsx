@@ -190,7 +190,7 @@ export default function AdminAnnouncementsPage() {
           </div>
         )}
 
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <div className="row-8-center-wrap">
           <button onClick={() => void save()} disabled={saving || !form.body.trim()}>
             {saving ? "Saving…" : form.announcement_id ? "Update Announcement" : "Schedule Announcement"}
           </button>
@@ -211,9 +211,9 @@ export default function AdminAnnouncementsPage() {
         </div>
 
         {announcements.length === 0 ? (
-          <p style={{ color: "var(--muted)", margin: 0 }}>No announcements yet.</p>
+          <p className="m-0 text-muted">No announcements yet.</p>
         ) : (
-          <div style={{ display: "grid", gap: 10 }}>
+          <div className="stack-10">
             {announcements.map((a) => {
               const ss = STATUS_STYLE[a.status] ?? STATUS_STYLE.expired;
               return (

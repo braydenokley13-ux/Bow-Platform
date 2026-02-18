@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -45,24 +45,26 @@ export default function StudentEventsPage() {
   const [reflection, setReflection] = useState("");
   const [result, setResult] = useState<EventSubmitPayload | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
       const json = await apiFetch<EventListPayload>("/api/events/active");
       const rows = Array.isArray(json.data) ? json.data : [];
       setEvents(rows);
-      if (!eventId && rows.length) setEventId(rows[0].event_id);
+      if (rows.length) {
+        setEventId((prev) => prev || rows[0].event_id);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load events");
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const selected = useMemo(
     () => events.find((row) => row.event_id === eventId) || null,
@@ -129,7 +131,7 @@ export default function StudentEventsPage() {
                 {events.map((row) => (
                   <tr key={row.event_id}>
                     <td>
-                      <div style={{ fontWeight: 700 }}>{row.title}</div>
+                      <div className="fw-700">{row.title}</div>
                       <div className="muted-12">{row.event_id}</div>
                     </td>
                     <td>
@@ -150,7 +152,7 @@ export default function StudentEventsPage() {
         )}
       </section>
 
-      <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onSubmit}>
         <h2 className="title-18">Submit Event Entry</h2>
         <div className="grid grid-2">
           <label>

@@ -151,7 +151,7 @@ export default function ReferPage() {
         </div>
 
         {!data || data.referrals.length === 0 ? (
-          <p style={{ color: "var(--muted)", margin: 0 }}>
+          <p className="m-0 text-muted">
             No referrals yet. Share your link to get started!
           </p>
         ) : (
@@ -189,7 +189,7 @@ export default function ReferPage() {
 
       {/* How it works */}
       <section className="card stack-10">
-        <h2 style={{ margin: 0, fontSize: 16 }}>How It Works</h2>
+        <h2 className="title-16">How It Works</h2>
         <ol style={{ margin: 0, paddingLeft: 20, color: "var(--muted)", fontSize: 14, lineHeight: 1.7 }}>
           <li>Copy your unique referral link above.</li>
           <li>Share it with friends interested in BOW Sports Capital programs.</li>

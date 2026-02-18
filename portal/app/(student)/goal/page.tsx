@@ -94,10 +94,10 @@ export default function GoalPage() {
             onChange={(e) => setDraft(e.target.value)}
             maxLength={500}
             placeholder='e.g. "Reach the top 5 on the leaderboard by Week 8"'
-            style={{ width: "100%", resize: "vertical" }}
+            className="input-resize"
           />
         </label>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="row-8-center">
           <button onClick={() => void save()} disabled={busy || !draft.trim() || !isDirty}>
             {busy ? "Saving..." : saved ? "Update Goal" : "Set Goal"}
           </button>

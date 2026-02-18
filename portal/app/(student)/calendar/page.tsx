@@ -142,7 +142,7 @@ export default function CalendarPage() {
                   <span style={{ fontSize: 11, opacity: 0.6 }}>{d.toLocaleDateString(undefined, { weekday: "short" })}</span>
                 </div>
                 <div style={{ padding: "12px 14px", display: "grid", gap: 3 }}>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <div className="row-8-center-wrap">
                     <span style={{
                       fontSize: 11, fontWeight: 600, padding: "1px 7px", borderRadius: 99,
                       background: kindColor(ev.kind) + "22", color: kindColor(ev.kind)

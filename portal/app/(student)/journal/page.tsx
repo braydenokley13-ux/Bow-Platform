@@ -90,7 +90,7 @@ export default function StudentJournalPage() {
     <div className="grid gap-14">
       <PageTitle title="Decision Journal" subtitle="Submit your decision evidence after a verified claim code completion" />
 
-      <form className="card" onSubmit={submitJournal} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={submitJournal}>
         <div className="grid grid-2">
           <label>
             Claim Code
@@ -122,7 +122,7 @@ export default function StudentJournalPage() {
           <textarea value={outcomeText} onChange={(e) => setOutcomeText(e.target.value)} rows={3} required />
         </label>
 
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="row-8">
           <button>Submit Journal Entry</button>
           <button type="button" className="secondary" onClick={() => void load()} disabled={busy}>
             {busy ? "Refreshing..." : "Refresh Entries"}

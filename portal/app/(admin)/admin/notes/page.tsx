@@ -160,7 +160,7 @@ export default function AdminNotesPage() {
         {/* Notes Panel */}
         <div className="card stack-14">
           {!selectedEmail ? (
-            <p style={{ color: "var(--muted)", margin: 0 }}>Select a student to view and add notes.</p>
+            <p className="m-0 text-muted">Select a student to view and add notes.</p>
           ) : (
             <>
               <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -179,7 +179,7 @@ export default function AdminNotesPage() {
                   rows={3}
                   style={{ resize: "vertical", fontSize: 14 }}
                 />
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <div className="row-8-center">
                   <button onClick={() => void saveNote()} disabled={saving || !newContent.trim()}>
                     {saving ? "Saving…" : "Add Note"}
                   </button>
@@ -201,7 +201,7 @@ export default function AdminNotesPage() {
               ) : notes === null ? null : notes.length === 0 ? (
                 <p style={{ color: "var(--muted)", fontSize: 14, margin: 0 }}>No notes yet for this student.</p>
               ) : (
-                <div style={{ display: "grid", gap: 10 }}>
+                <div className="stack-10">
                   {notes.map((note) => (
                     <div
                       key={note.note_id}

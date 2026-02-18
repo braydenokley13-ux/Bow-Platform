@@ -117,7 +117,7 @@ export default function HelpPage() {
             />
           </label>
 
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="row-8">
             <button disabled={busy}>{busy ? "Submitting..." : "Submit support ticket"}</button>
             <button
               type="button"

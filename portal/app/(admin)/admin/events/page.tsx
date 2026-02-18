@@ -101,7 +101,7 @@ export default function AdminEventsPage() {
     <div className="grid gap-14">
       <PageTitle title="Live Event Manager" subtitle="Create and operate track-based live events" />
 
-      <form className="card" onSubmit={onSave} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onSave}>
         <div className="grid grid-2">
           <label>
             Season ID (blank = active)
@@ -191,7 +191,7 @@ export default function AdminEventsPage() {
             {rows.map((row) => (
               <tr key={row.event_id}>
                 <td>
-                  <div style={{ fontWeight: 700 }}>{row.title}</div>
+                  <div className="fw-700">{row.title}</div>
                   <div className="muted-12">{row.event_id}</div>
                 </td>
                 <td>

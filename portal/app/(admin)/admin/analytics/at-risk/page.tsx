@@ -68,7 +68,7 @@ export default function AdminAtRiskPage() {
     <div className="grid gap-14">
       <PageTitle title="At-Risk Segmentation" subtitle="Prioritize who needs intervention now" />
 
-      <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onSubmit}>
         <div className="grid grid-2">
           <label>
             Lookback Days

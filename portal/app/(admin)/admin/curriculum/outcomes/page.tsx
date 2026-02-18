@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -45,14 +45,16 @@ export default function CurriculumOutcomesPage() {
   const [editFramework, setEditFramework] = useState("");
   const [editStatus, setEditStatus] = useState("DRAFT");
 
-  async function loadLessons() {
+  const loadLessons = useCallback(async () => {
     const json = await apiFetch<Envelope<LessonRow[]>>("/api/admin/curriculum/draft/lessons");
     const items = json.data || [];
     setLessons(items);
-    if (!lessonKey && items.length) setLessonKey(items[0].lesson_key);
-  }
+    if (items.length) {
+      setLessonKey((prev) => prev || items[0].lesson_key);
+    }
+  }, []);
 
-  async function loadOutcomes(lk: string) {
+  const loadOutcomes = useCallback(async (lk: string) => {
     setBusy(true);
     setMessage("");
     try {
@@ -66,7 +68,7 @@ export default function CurriculumOutcomesPage() {
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -76,11 +78,11 @@ export default function CurriculumOutcomesPage() {
         setMessage(err instanceof Error ? err.message : "Failed to load lessons");
       }
     })();
-  }, []);
+  }, [loadLessons]);
 
   useEffect(() => {
     void loadOutcomes(lessonKey);
-  }, [lessonKey]);
+  }, [lessonKey, loadOutcomes]);
 
   async function createOutcome(e: FormEvent) {
     e.preventDefault();
@@ -161,7 +163,7 @@ export default function CurriculumOutcomesPage() {
         </div>
       </section>
 
-      <form className="card" onSubmit={createOutcome} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={createOutcome}>
         <h2 className="title-18">Create Outcome</h2>
         <div className="grid grid-2">
           <label>
@@ -184,7 +186,7 @@ export default function CurriculumOutcomesPage() {
         <button>Create Outcome</button>
       </form>
 
-      <form className="card" onSubmit={updateOutcome} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={updateOutcome}>
         <h2 className="title-18">Edit Outcome</h2>
         <label>
           Outcome ID
@@ -240,7 +242,7 @@ export default function CurriculumOutcomesPage() {
                   setEditFramework(r.framework_name || "");
                   setEditStatus(r.status || "DRAFT");
                 }}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer"
               >
                 <td>{r.outcome_id}</td>
                 <td>{r.lesson_key}</td>

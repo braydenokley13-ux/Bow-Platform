@@ -83,7 +83,7 @@ export default function AdminSettingsPage() {
             style={{ width: "100%" }}
           />
         </label>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="row-8">
           <button onClick={() => void saveZoomLink()} disabled={busy}>
             {busy ? "Saving..." : "Save Zoom Link"}
           </button>

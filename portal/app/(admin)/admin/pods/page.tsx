@@ -74,7 +74,7 @@ export default function AdminPodsPage() {
     <div className="grid gap-14">
       <PageTitle title="Pod Manager" subtitle="Assign students into pods and monitor pod standings" />
 
-      <form className="card" onSubmit={onAssign} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onAssign}>
         <div className="grid grid-2">
           <label>
             Season ID (blank = active)
@@ -117,7 +117,7 @@ export default function AdminPodsPage() {
             {rows.map((row) => (
               <tr key={row.pod_id}>
                 <td>
-                  <div style={{ fontWeight: 700 }}>{row.name}</div>
+                  <div className="fw-700">{row.name}</div>
                   <div className="muted-12">{row.pod_id}</div>
                 </td>
                 <td>{row.status}</td>

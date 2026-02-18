@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -47,12 +47,12 @@ export default function TimelinePage() {
   const [cursor, setCursor] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(false);
 
-  async function load(append = false) {
+  const load = useCallback(async (append = false, cursorToken?: string) => {
     setBusy(true);
     setError(null);
     try {
       const params = new URLSearchParams({ limit: "30" });
-      if (append && cursor) params.set("cursor", cursor);
+      if (append && cursorToken) params.set("cursor", cursorToken);
 
       const res = await apiFetch<TimelinePayload>(
         `/api/me/activity-timeline?${params.toString()}`
@@ -66,11 +66,11 @@ export default function TimelinePage() {
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   return (
     <div className="grid gap-14">
@@ -147,7 +147,7 @@ export default function TimelinePage() {
 
       {hasMore ? (
         <section className="card">
-          <button className="secondary" onClick={() => void load(true)} disabled={busy}>
+          <button className="secondary" onClick={() => void load(true, cursor)} disabled={busy}>
             {busy ? "Loading..." : "Load more"}
           </button>
         </section>

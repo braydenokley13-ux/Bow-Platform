@@ -98,7 +98,7 @@ export default function AdminQuestsPage() {
     <div className="grid gap-14">
       <PageTitle title="Quest Manager" subtitle="Create personalized missions and reward logic" />
 
-      <form className="card" onSubmit={onSave} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onSave}>
         <div className="grid grid-2">
           <label>
             Title
@@ -184,7 +184,7 @@ export default function AdminQuestsPage() {
             {rows.map((row) => (
               <tr key={row.quest_id}>
                 <td>
-                  <div style={{ fontWeight: 700 }}>{row.title}</div>
+                  <div className="fw-700">{row.title}</div>
                   <div className="muted-12">{row.quest_id}</div>
                 </td>
                 <td>

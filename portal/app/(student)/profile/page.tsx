@@ -182,10 +182,10 @@ export default function ProfilePage() {
               onChange={(e) => setDraftBio(e.target.value)}
               maxLength={300}
               placeholder="A short intro about yourself..."
-              style={{ width: "100%", resize: "vertical" }}
+              className="input-resize"
             />
           </label>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="row-8">
             <button onClick={() => void saveEdit()} disabled={saving || !draftName.trim()}>
               {saving ? "Saving..." : "Save"}
             </button>

@@ -53,7 +53,7 @@ export default function AdminDecisionTrendsPage() {
     <div className="grid gap-14">
       <PageTitle title="Decision Quality Trends" subtitle="Weekly rubric trendlines across scored journal entries" />
 
-      <form className="card" onSubmit={onFilter} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onFilter}>
         <div className="grid grid-2">
           <label>
             Student Email (optional)

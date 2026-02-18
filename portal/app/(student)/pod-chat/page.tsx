@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -29,12 +29,12 @@ export default function PodChatPage() {
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  async function load(prepend = false) {
+  const load = useCallback(async (prepend = false, cursorToken = "") => {
     setBusy(true);
     setError(null);
     try {
       const params = new URLSearchParams({ limit: "40" });
-      if (prepend && cursor) params.set("cursor", cursor);
+      if (prepend && cursorToken) params.set("cursor", cursorToken);
       const res = await apiFetch<ChatPayload>(`/api/pod-chat?${params}`);
       const incoming = res.data.messages ?? [];
       setMessages((prev) => (prepend ? [...incoming, ...prev] : incoming));
@@ -46,7 +46,7 @@ export default function PodChatPage() {
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   async function send() {
     if (!draft.trim()) return;
@@ -71,7 +71,9 @@ export default function PodChatPage() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   return (
     <div className="grid gap-14">
@@ -84,7 +86,7 @@ export default function PodChatPage() {
 
       {hasMore ? (
         <section className="card">
-          <button className="secondary" onClick={() => void load(true)} disabled={busy}>
+          <button className="secondary" onClick={() => void load(true, cursor)} disabled={busy}>
             {busy ? "Loading..." : "Load older messages"}
           </button>
         </section>
@@ -151,9 +153,9 @@ export default function PodChatPage() {
           onKeyDown={handleKey}
           maxLength={1000}
           placeholder="Message your pod... (Ctrl+Enter to send)"
-          style={{ width: "100%", resize: "vertical" }}
+          className="input-resize"
         />
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="row-8-center">
           <button onClick={() => void send()} disabled={sending || !draft.trim()}>
             {sending ? "Sending..." : "Send"}
           </button>

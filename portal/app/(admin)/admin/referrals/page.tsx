@@ -97,7 +97,7 @@ export default function AdminReferralsPage() {
       <section className="card stack-12">
         <h2 className="title-18">All Referrals</h2>
         {referrals.length === 0 ? (
-          <p style={{ color: "var(--muted)", margin: 0 }}>No referrals recorded yet.</p>
+          <p className="m-0 text-muted">No referrals recorded yet.</p>
         ) : (
           <div className="table-wrap">
             <table className="table-inline">

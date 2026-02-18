@@ -91,7 +91,7 @@ export default function AdminJournalReviewPage() {
         <span className="pill">Pending: {rows.length}</span>
       </section>
 
-      <form className="card" onSubmit={submitScore} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={submitScore}>
         <h2 className="title-18">Score Selected Entry</h2>
         <label>
           Entry ID
@@ -150,7 +150,7 @@ export default function AdminJournalReviewPage() {
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.entry_id} onClick={() => setEntryId(r.entry_id)} style={{ cursor: "pointer" }}>
+              <tr key={r.entry_id} onClick={() => setEntryId(r.entry_id)} className="cursor-pointer">
                 <td>{r.submitted_at ? new Date(r.submitted_at).toLocaleString() : ""}</td>
                 <td>{r.email}</td>
                 <td>{r.claim_code}</td>

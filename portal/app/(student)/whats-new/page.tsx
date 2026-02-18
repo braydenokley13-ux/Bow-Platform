@@ -68,7 +68,7 @@ export default function WhatsNewPage() {
       <div className="grid stack-10">
         {entries.map((entry) => (
           <article key={entry.entry_id} className="card stack-8">
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="row-8-center-wrap">
               <span className="pill">{CATEGORY_LABEL[entry.category] ?? entry.category}</span>
               <span style={{ opacity: 0.45, fontSize: 13 }}>
                 {new Date(entry.published_at).toLocaleDateString(undefined, {
@@ -78,7 +78,7 @@ export default function WhatsNewPage() {
                 })}
               </span>
             </div>
-            <h2 style={{ margin: 0, fontSize: 16 }}>{entry.title}</h2>
+            <h2 className="title-16">{entry.title}</h2>
             <p className="m-0 text-muted-75" style={{ whiteSpace: "pre-wrap" }}>{entry.body}</p>
           </article>
         ))}

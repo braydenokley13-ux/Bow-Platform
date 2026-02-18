@@ -144,7 +144,7 @@ export default function AdminRewardsPage() {
             </select>
           </label>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <div className="row-8-center-wrap">
           <button onClick={() => void save()} disabled={saving || !form.title}>
             {saving ? "Saving…" : form.reward_id ? "Update Reward" : "Add Reward"}
           </button>
@@ -166,7 +166,7 @@ export default function AdminRewardsPage() {
           )}
         </div>
         {pending.length === 0 ? (
-          <p style={{ color: "var(--muted)", margin: 0 }}>No pending redemptions.</p>
+          <p className="m-0 text-muted">No pending redemptions.</p>
         ) : (
           <div className="table-wrap">
             <table className="table-inline">
@@ -208,7 +208,7 @@ export default function AdminRewardsPage() {
           </button>
         </div>
         {catalog.length === 0 ? (
-          <p style={{ color: "var(--muted)", margin: 0 }}>No rewards in catalog yet.</p>
+          <p className="m-0 text-muted">No rewards in catalog yet.</p>
         ) : (
           <div className="table-wrap">
             <table className="table-inline">

@@ -81,7 +81,7 @@ export default function AdminSeasonsPage() {
     <div className="grid gap-14">
       <PageTitle title="Season Manager" subtitle="Create and manage one active season at a time" />
 
-      <form className="card" onSubmit={onCreate} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onCreate}>
         <div className="grid grid-2">
           <label>
             Title
@@ -135,7 +135,7 @@ export default function AdminSeasonsPage() {
             {rows.map((row) => (
               <tr key={row.season_id}>
                 <td>
-                  <div style={{ fontWeight: 700 }}>{row.title}</div>
+                  <div className="fw-700">{row.title}</div>
                   <div className="muted-12">{row.season_id}</div>
                 </td>
                 <td>{row.status}</td>

@@ -40,7 +40,7 @@ export default function AdminAssignmentsPage() {
   return (
     <div className="grid gap-14">
       <PageTitle title="Assignments Manager" subtitle="Create or update assignment records" />
-      <form className="card" onSubmit={onSave} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onSave}>
         <div className="grid grid-2">
           <label>
             Title

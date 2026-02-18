@@ -31,7 +31,7 @@ export default function ChatPage() {
   return (
     <div className="grid gap-14">
       <PageTitle title="Class Chat" subtitle="Live cohort discussion" />
-      <form className="card" onSubmit={sendMessage} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={sendMessage}>
         <label>
           Message
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={1200} required />

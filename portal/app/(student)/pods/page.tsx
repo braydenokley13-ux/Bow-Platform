@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -51,24 +51,26 @@ export default function StudentPodsPage() {
   const [message, setMessage] = useState("");
   const [result, setResult] = useState<KudosPayload | null>(null);
 
-  async function load() {
+  const load = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
       const json = await apiFetch<PodPayload>("/api/pods/me");
       setPayload(json);
       const firstMember = (json.data?.members || []).find((m) => !!m.email);
-      if (firstMember && !targetEmail) setTargetEmail(firstMember.email);
+      if (firstMember) {
+        setTargetEmail((prev) => prev || firstMember.email);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load pod");
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const pod = payload?.data;
   const memberOptions = useMemo(() => (pod?.members || []).map((m) => m.email), [pod]);
@@ -156,7 +158,7 @@ export default function StudentPodsPage() {
             </div>
           </section>
 
-          <form className="card" onSubmit={onSendKudos} style={{ display: "grid", gap: 10 }}>
+          <form className="card stack-10" onSubmit={onSendKudos}>
             <h2 className="title-18">Send Kudos</h2>
             <div className="grid grid-2">
               <label>

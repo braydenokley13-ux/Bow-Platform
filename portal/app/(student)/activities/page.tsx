@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 import type { ActivityItem } from "@/types/portal";
@@ -17,7 +17,7 @@ export default function ActivitiesPage() {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ActivityItem[]>([]);
 
-  async function load() {
+  const load = useCallback(async () => {
     setBusy(true);
     setError(null);
     try {
@@ -29,11 +29,11 @@ export default function ActivitiesPage() {
     } finally {
       setBusy(false);
     }
-  }
+  }, [moduleId, track]);
 
   useEffect(() => {
     void load();
-  }, [track, moduleId]);
+  }, [load]);
 
   const grouped = useMemo(() => {
     const byModule: Record<string, ActivityItem[]> = {};
@@ -69,7 +69,7 @@ export default function ActivitiesPage() {
             />
           </label>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="row-8">
           <button onClick={() => void load()} disabled={busy}>
             {busy ? "Loading..." : "Refresh activities"}
           </button>

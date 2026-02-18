@@ -49,7 +49,7 @@ export default function AdminBroadcastPage() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             placeholder="Write your announcement here..."
-            style={{ width: "100%", resize: "vertical" }}
+            className="input-resize"
           />
         </label>
         <div>

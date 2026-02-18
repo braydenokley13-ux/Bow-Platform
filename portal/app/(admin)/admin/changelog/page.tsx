@@ -123,7 +123,7 @@ export default function AdminChangelogPage() {
             onChange={(e) => setBody(e.target.value)}
             maxLength={2000}
             placeholder="Describe what changed and how it affects students..."
-            style={{ width: "100%", resize: "vertical" }}
+            className="input-resize"
           />
         </label>
         <div>
@@ -137,7 +137,7 @@ export default function AdminChangelogPage() {
       </section>
 
       <section className="card stack-8">
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="row-8-center">
           <h2 className="title-18">Published Entries ({entries.length})</h2>
           <button className="secondary" onClick={() => void load()} disabled={busy}>
             {busy ? "Loading..." : "Refresh"}
@@ -158,7 +158,7 @@ export default function AdminChangelogPage() {
               gap: 4
             }}
           >
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="row-8-center-wrap">
               <span className="pill">{entry.category}</span>
               <strong>{entry.title}</strong>
               <span style={{ opacity: 0.45, fontSize: 12, marginLeft: "auto" }}>

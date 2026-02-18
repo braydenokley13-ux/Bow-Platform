@@ -77,7 +77,7 @@ export default function AdminEngagementOverviewPage() {
     <div className="grid gap-14">
       <PageTitle title="Engagement Overview" subtitle="Live weekly engagement status and participation KPIs" />
 
-      <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={onSubmit}>
         <div className="grid grid-2">
           <label>
             Window (days)

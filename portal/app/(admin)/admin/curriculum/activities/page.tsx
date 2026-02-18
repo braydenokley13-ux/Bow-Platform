@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -53,14 +53,16 @@ export default function CurriculumActivitiesPage() {
   const [editPattern, setEditPattern] = useState("");
   const [editStatus, setEditStatus] = useState("DRAFT");
 
-  async function loadLessons() {
+  const loadLessons = useCallback(async () => {
     const json = await apiFetch<Envelope<LessonRow[]>>("/api/admin/curriculum/draft/lessons");
     const items = json.data || [];
     setLessons(items);
-    if (!lessonKey && items.length) setLessonKey(items[0].lesson_key);
-  }
+    if (items.length) {
+      setLessonKey((prev) => prev || items[0].lesson_key);
+    }
+  }, []);
 
-  async function loadActivities(lk: string) {
+  const loadActivities = useCallback(async (lk: string) => {
     setBusy(true);
     setMessage("");
     try {
@@ -74,7 +76,7 @@ export default function CurriculumActivitiesPage() {
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -84,11 +86,11 @@ export default function CurriculumActivitiesPage() {
         setMessage(err instanceof Error ? err.message : "Failed to load lessons");
       }
     })();
-  }, []);
+  }, [loadLessons]);
 
   useEffect(() => {
     void loadActivities(lessonKey);
-  }, [lessonKey]);
+  }, [lessonKey, loadActivities]);
 
   async function createActivity(e: FormEvent) {
     e.preventDefault();
@@ -180,7 +182,7 @@ export default function CurriculumActivitiesPage() {
         </div>
       </section>
 
-      <form className="card" onSubmit={createActivity} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={createActivity}>
         <h2 className="title-18">Create Activity</h2>
         <div className="grid grid-2">
           <label>
@@ -231,7 +233,7 @@ export default function CurriculumActivitiesPage() {
         <button>Create Activity</button>
       </form>
 
-      <form className="card" onSubmit={updateActivity} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={updateActivity}>
         <h2 className="title-18">Edit Activity</h2>
         <label>
           Activity ID
@@ -291,7 +293,7 @@ export default function CurriculumActivitiesPage() {
                   setEditPattern(r.claim_code_pattern || "");
                   setEditStatus(r.status || "DRAFT");
                 }}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer"
               >
                 <td>{r.activity_id}</td>
                 <td>{r.track}</td>

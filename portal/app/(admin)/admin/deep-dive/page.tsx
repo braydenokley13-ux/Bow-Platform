@@ -95,7 +95,7 @@ export default function AdminDeepDivePage() {
       {statusMsg ? <section className="card"><div className="banner">{statusMsg}</div></section> : null}
 
       <section className="card stack-10">
-        <h2 style={{ margin: 0, fontSize: 16 }}>Add Link</h2>
+        <h2 className="title-16">Add Link</h2>
         <div className="grid grid-2">
           <label>
             Module ID

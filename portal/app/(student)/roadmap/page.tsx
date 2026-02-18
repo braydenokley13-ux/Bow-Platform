@@ -160,7 +160,7 @@ export default function StudentRoadmapPage() {
                   key={mod.module_id}
                   style={{ paddingLeft: 16, borderLeft: "2px solid var(--border, #e5e7eb)", display: "grid", gap: 6 }}
                 >
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <div className="row-8-center-wrap">
                     <strong style={{ fontSize: 15 }}>{mod.title}</strong>
                     <span className="pill" style={{ fontSize: 12 }}>
                       {modDone}/{modTotal}

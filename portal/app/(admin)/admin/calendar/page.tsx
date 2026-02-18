@@ -109,7 +109,7 @@ export default function AdminCalendarPage() {
       {statusMsg ? <section className="card"><div className="banner">{statusMsg}</div></section> : null}
 
       <section className="card stack-10">
-        <h2 style={{ margin: 0, fontSize: 16 }}>{editId ? "Edit Event" : "New Event"}</h2>
+        <h2 className="title-16">{editId ? "Edit Event" : "New Event"}</h2>
         <div className="grid grid-2">
           <label>
             Title
@@ -144,9 +144,9 @@ export default function AdminCalendarPage() {
         </div>
         <label>
           Notes <span style={{ opacity: 0.5, fontWeight: 400 }}>(optional)</span>
-          <textarea rows={2} value={form.notes} onChange={f("notes")} style={{ width: "100%", resize: "vertical" }} />
+          <textarea rows={2} value={form.notes} onChange={f("notes")} className="input-resize" />
         </label>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div className="row-8">
           <button onClick={() => void save()} disabled={saving || !form.title || !form.starts_at}>
             {saving ? "Saving..." : editId ? "Update Event" : "Create Event"}
           </button>

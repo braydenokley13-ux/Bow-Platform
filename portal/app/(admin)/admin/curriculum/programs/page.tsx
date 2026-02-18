@@ -105,7 +105,7 @@ export default function CurriculumProgramsPage() {
         <span className="pill">Programs: {rows.length}</span>
       </section>
 
-      <form className="card" onSubmit={createProgram} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={createProgram}>
         <h2 className="title-18">Create Program</h2>
         <div className="grid grid-2">
           <label>
@@ -124,7 +124,7 @@ export default function CurriculumProgramsPage() {
         <button>Create Program</button>
       </form>
 
-      <form className="card" onSubmit={updateProgram} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={updateProgram}>
         <h2 className="title-18">Edit Program</h2>
         <label>
           Program ID
@@ -175,7 +175,7 @@ export default function CurriculumProgramsPage() {
                   setEditName(r.name || "");
                   setEditStatus(r.status || "DRAFT");
                 }}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer"
               >
                 <td>{r.program_id}</td>
                 <td>{r.name}</td>

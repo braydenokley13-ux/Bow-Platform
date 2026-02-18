@@ -185,7 +185,7 @@ export default function AdminPreviewPage() {
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 4 }}>
                         <span style={{ fontWeight: 700, fontSize: 13 }}>{n.title}</span>
-                        <div style={{ display: "flex", gap: 8 }}>
+                        <div className="row-8">
                           <span className="pill" style={{ fontSize: 11 }}>{n.kind}</span>
                           <span style={{ color: "var(--muted)", fontSize: 11 }}>{n.status}</span>
                         </div>
@@ -195,7 +195,7 @@ export default function AdminPreviewPage() {
                     </div>
                   ))
                 ) : (
-                  <p style={{ color: "var(--muted)", margin: 0 }}>No notifications.</p>
+                  <p className="m-0 text-muted">No notifications.</p>
                 )}
               </div>
             )}

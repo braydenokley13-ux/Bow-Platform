@@ -134,7 +134,7 @@ export default function DeepDivePage() {
               }}
             >
               <div style={{ display: "grid", gap: 3 }}>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <div className="row-8-center-wrap">
                   <span>{KIND_ICON[link.kind] ?? "🔗"}</span>
                   <a
                     href={link.url}

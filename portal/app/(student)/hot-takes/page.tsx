@@ -24,7 +24,7 @@ function VoteBar({ agree, disagree }: { agree: number; disagree: number }) {
   const total = agree + disagree;
   const agreePct = total === 0 ? 50 : Math.round((agree / total) * 100);
   return (
-    <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+    <div className="row-8-center">
       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent, #2563eb)", minWidth: 36 }}>
         {agreePct}%
       </span>
@@ -113,10 +113,10 @@ export default function HotTakesPage() {
             onChange={(e) => setDraft(e.target.value)}
             maxLength={280}
             placeholder="e.g. The franchise tag is ruining player mobility in the NFL."
-            style={{ width: "100%", resize: "vertical" }}
+            className="input-resize"
           />
         </label>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="row-8-center">
           <button onClick={() => void post()} disabled={posting || !draft.trim()}>
             {posting ? "Posting..." : "Post Take"}
           </button>
@@ -137,7 +137,7 @@ export default function HotTakesPage() {
 
             <VoteBar agree={t.agree_count} disagree={t.disagree_count} />
 
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="row-8-center-wrap">
               <button
                 onClick={() => void vote(t.take_id, "agree")}
                 disabled={voting === t.take_id || t.my_vote === "agree"}

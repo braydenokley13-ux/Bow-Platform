@@ -87,7 +87,7 @@ export default function AdminGoalsPage() {
       <div className="grid stack-10">
         {filtered.map((g) => (
           <article key={g.email} className="card stack-6">
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="row-8-center-wrap">
               <strong>{g.display_name ?? g.email}</strong>
               {g.pod ? <span className="pill">{g.pod}</span> : null}
               <span style={{ opacity: 0.5, fontSize: 13 }}>{g.email}</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -32,12 +32,12 @@ export default function KudosPage() {
   const [message, setMessage] = useState("");
   const [statusMsg, setStatusMsg] = useState("");
 
-  async function load(append = false) {
+  const load = useCallback(async (append = false, cursorToken = "") => {
     setBusy(true);
     setError(null);
     try {
       const params = new URLSearchParams({ limit: "30" });
-      if (append && cursor) params.set("cursor", cursor);
+      if (append && cursorToken) params.set("cursor", cursorToken);
       const res = await apiFetch<KudosPayload>(`/api/kudos?${params}`);
       const incoming = res.data.kudos ?? [];
       setKudos((prev) => (append ? [...prev, ...incoming] : incoming));
@@ -48,7 +48,7 @@ export default function KudosPage() {
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   async function send() {
     if (!recipient.trim() || !message.trim()) return;
@@ -71,7 +71,9 @@ export default function KudosPage() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const pinned = kudos.filter((k) => k.pinned);
   const rest = kudos.filter((k) => !k.pinned);
@@ -84,7 +86,7 @@ export default function KudosPage() {
       {statusMsg ? <section className="card"><div className="banner">{statusMsg}</div></section> : null}
 
       <section className="card stack-10">
-        <h2 style={{ margin: 0, fontSize: 16 }}>Send a Shoutout</h2>
+        <h2 className="title-16">Send a Shoutout</h2>
         <div className="grid grid-2">
           <label>
             Recipient email
@@ -105,7 +107,7 @@ export default function KudosPage() {
             />
           </label>
         </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="row-8-center">
           <button onClick={() => void send()} disabled={sending || !recipient.trim() || !message.trim()}>
             {sending ? "Sending..." : "Send Shoutout"}
           </button>
@@ -133,7 +135,7 @@ export default function KudosPage() {
 
       {hasMore ? (
         <section className="card">
-          <button className="secondary" onClick={() => void load(true)} disabled={busy}>
+          <button className="secondary" onClick={() => void load(true, cursor)} disabled={busy}>
             {busy ? "Loading..." : "Load more"}
           </button>
         </section>
@@ -146,9 +148,9 @@ function KudosCard({ k }: { k: Kudos }) {
   return (
     <div style={{ padding: "12px 16px" }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "baseline", marginBottom: 4 }}>
-        <span style={{ fontWeight: 700 }}>{k.sender_name ?? k.sender_email}</span>
+        <span className="fw-700">{k.sender_name ?? k.sender_email}</span>
         <span style={{ opacity: 0.5 }}>→</span>
-        <span style={{ fontWeight: 700 }}>{k.recipient_name ?? k.recipient_email}</span>
+        <span className="fw-700">{k.recipient_name ?? k.recipient_email}</span>
         {k.xp_awarded ? <span className="pill" style={{ fontSize: 12 }}>+{k.xp_awarded} XP</span> : null}
         <span style={{ marginLeft: "auto", fontSize: 12, opacity: 0.4 }}>
           {new Date(k.sent_at).toLocaleDateString()}

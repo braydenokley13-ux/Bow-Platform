@@ -168,7 +168,7 @@ export default function DiscussionPage() {
               onChange={(e) => setReplyBody(e.target.value)}
               maxLength={2000}
               placeholder="Share your thoughts..."
-              style={{ width: "100%", resize: "vertical" }}
+              className="input-resize"
             />
           </label>
           <div>
@@ -196,7 +196,7 @@ export default function DiscussionPage() {
 
       {composing ? (
         <section className="card stack-10">
-          <h2 style={{ margin: 0, fontSize: 16 }}>New Discussion Thread</h2>
+          <h2 className="title-16">New Discussion Thread</h2>
           <label>
             Title
             <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} maxLength={200} placeholder="Your question or topic..." />
@@ -213,7 +213,7 @@ export default function DiscussionPage() {
               onChange={(e) => setNewBody(e.target.value)}
               maxLength={2000}
               placeholder="Provide context for your question..."
-              style={{ width: "100%", resize: "vertical" }}
+              className="input-resize"
             />
           </label>
           <div>
@@ -238,7 +238,7 @@ export default function DiscussionPage() {
             style={{ all: "unset", cursor: "pointer", display: "block" }}
           >
             <article className="card stack-4">
-              <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div className="row-8-center-wrap">
                 {t.module_id ? <span className="pill" style={{ fontSize: 12 }}>{t.module_id}</span> : null}
                 <h2 style={{ margin: 0, fontSize: 15 }}>{t.title}</h2>
               </div>

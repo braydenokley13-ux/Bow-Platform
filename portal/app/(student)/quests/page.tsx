@@ -119,7 +119,7 @@ export default function StudentQuestsPage() {
                   return (
                     <tr key={quest.quest_id}>
                       <td>
-                        <div style={{ fontWeight: 700 }}>{quest.title}</div>
+                        <div className="fw-700">{quest.title}</div>
                         <div className="muted-12">{quest.description}</div>
                         <div className="muted-12">Type: {quest.target_type}</div>
                       </td>

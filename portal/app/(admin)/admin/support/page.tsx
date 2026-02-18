@@ -119,7 +119,7 @@ export default function AdminSupportPage() {
                       <td>{t.priority}</td>
                       <td>{t.status}</td>
                       <td style={{ minWidth: 260 }}>
-                        <div style={{ fontWeight: 700 }}>{t.subject}</div>
+                        <div className="fw-700">{t.subject}</div>
                         <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{t.message}</div>
                         {t.page_context ? (
                           <div style={{ marginTop: 6, color: "var(--muted)", fontSize: 12 }}>

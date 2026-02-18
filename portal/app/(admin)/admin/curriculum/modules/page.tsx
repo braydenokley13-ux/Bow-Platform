@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
@@ -40,14 +40,16 @@ export default function CurriculumModulesPage() {
   const [editTitle, setEditTitle] = useState("");
   const [editStatus, setEditStatus] = useState("DRAFT");
 
-  async function loadPrograms() {
+  const loadPrograms = useCallback(async () => {
     const json = await apiFetch<Envelope<ProgramRow[]>>("/api/admin/curriculum/draft/programs");
     const items = json.data || [];
     setPrograms(items);
-    if (!programId && items.length) setProgramId(items[0].program_id);
-  }
+    if (items.length) {
+      setProgramId((prev) => prev || items[0].program_id);
+    }
+  }, []);
 
-  async function loadModules(pid: string) {
+  const loadModules = useCallback(async (pid: string) => {
     setBusy(true);
     setMessage("");
     try {
@@ -61,7 +63,7 @@ export default function CurriculumModulesPage() {
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -71,11 +73,11 @@ export default function CurriculumModulesPage() {
         setMessage(err instanceof Error ? err.message : "Failed to load programs");
       }
     })();
-  }, []);
+  }, [loadPrograms]);
 
   useEffect(() => {
     void loadModules(programId);
-  }, [programId]);
+  }, [programId, loadModules]);
 
   async function createModule(e: FormEvent) {
     e.preventDefault();
@@ -152,7 +154,7 @@ export default function CurriculumModulesPage() {
         </div>
       </section>
 
-      <form className="card" onSubmit={createModule} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={createModule}>
         <h2 className="title-18">Create Module</h2>
         <label>
           Module Title
@@ -171,7 +173,7 @@ export default function CurriculumModulesPage() {
         <button>Create Module</button>
       </form>
 
-      <form className="card" onSubmit={updateModule} style={{ display: "grid", gap: 10 }}>
+      <form className="card stack-10" onSubmit={updateModule}>
         <h2 className="title-18">Edit Module</h2>
         <label>
           Module ID
@@ -222,7 +224,7 @@ export default function CurriculumModulesPage() {
                   setEditTitle(r.module_title || "");
                   setEditStatus(r.status || "DRAFT");
                 }}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer"
               >
                 <td>{r.module_id}</td>
                 <td>{r.program_id}</td>

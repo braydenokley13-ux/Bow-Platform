@@ -121,7 +121,7 @@ export default function RewardsPage() {
             ))}
           </div>
         ) : catalog.length === 0 ? (
-          <p style={{ color: "var(--muted)", margin: 0 }}>No rewards available right now. Check back soon!</p>
+          <p className="m-0 text-muted">No rewards available right now. Check back soon!</p>
         ) : (
           <div className="grid grid-2" style={{ gap: 12 }}>
             {catalog.map((item) => {
@@ -184,7 +184,7 @@ export default function RewardsPage() {
       <section className="card stack-14">
         <h2 className="title-18">Your Redemptions</h2>
         {redemptions.length === 0 ? (
-          <p style={{ color: "var(--muted)", margin: 0 }}>You haven&apos;t redeemed anything yet.</p>
+          <p className="m-0 text-muted">You haven&apos;t redeemed anything yet.</p>
         ) : (
           <div className="table-wrap">
             <table className="table-inline">
