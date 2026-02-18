@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageTitle } from "@/components/page-title";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { apiFetch } from "@/lib/client-api";
 
 interface DashboardPayload {
@@ -46,10 +47,7 @@ interface DashboardPayload {
         points: number;
       }>;
     };
-    quick_actions?: Array<{
-      title: string;
-      href: string;
-    }>;
+    quick_actions?: Array<{ title: string; href: string }>;
     notifications: Array<{
       notification_id: string;
       title: string;
@@ -62,8 +60,8 @@ interface DashboardPayload {
 }
 
 export default function StudentDashboardPage() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
 
   async function load() {
@@ -79,71 +77,57 @@ export default function StudentDashboardPage() {
     }
   }
 
-  useEffect(() => {
-    void load();
-  }, []);
+  useEffect(() => { void load(); }, []);
 
   const user = payload?.data.user;
   const trackCards = useMemo(() => {
-    const map = payload?.data.xp_by_track || {};
+    const map = payload?.data.xp_by_track ?? {};
     return Object.entries(map).map(([track, xp]) => ({ track, xp }));
   }, [payload]);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-5">
       <PageTitle title="Dashboard" subtitle="Your performance, raffle status, and recent updates" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="action-bar">
         <button onClick={() => void load()} disabled={busy}>
-          {busy ? "Refreshing..." : "Refresh dashboard"}
+          {busy ? "Refreshing…" : "Refresh dashboard"}
         </button>
-        {busy ? <span className="pill">Loading latest data...</span> : null}
-      </section>
+        {busy && <span className="pill">Loading latest data…</span>}
+      </div>
 
-      {error ? (
-        <section className="card">
-          <div className="banner banner-error">
-            <strong>Dashboard load failed:</strong> {error}
-          </div>
+      {error && (
+        <div className="banner banner-error">
+          <strong>Dashboard load failed:</strong> {error}
           <div style={{ marginTop: 10 }}>
-            <button onClick={() => void load()} className="secondary">
-              Retry
-            </button>
+            <button onClick={() => void load()} className="secondary">Retry</button>
           </div>
-        </section>
-      ) : null}
+        </div>
+      )}
 
-      {busy && !payload ? (
+      {busy && !payload && (
         <section className="grid grid-2">
-          <article className="card">
-            <div className="skeleton sk-line" style={{ width: "40%" }} />
-            <div className="skeleton sk-title" />
-            <div className="skeleton sk-line" style={{ width: "70%" }} />
-          </article>
-          <article className="card">
-            <div className="skeleton sk-line" style={{ width: "40%" }} />
-            <div className="skeleton sk-title" />
-            <div className="skeleton sk-line" style={{ width: "70%" }} />
-          </article>
+          <article className="card"><LoadingSkeleton lines={3} /></article>
+          <article className="card"><LoadingSkeleton lines={3} /></article>
         </section>
-      ) : null}
+      )}
 
-      {user ? (
+      {user && (
         <section className="grid grid-2">
           <article className="card">
             <div className="kicker">Student</div>
             <h2 style={{ margin: "6px 0" }}>{user.display_name || user.email}</h2>
-            <div className="pill">{user.email}</div>
+            <span className="pill">{user.email}</span>
           </article>
           <article className="card">
             <div className="kicker">Level</div>
             <h2 style={{ margin: "6px 0" }}>
-              {user.level} {user.level_title ? `· ${user.level_title}` : ""}
+              {user.level}{user.level_title ? ` · ${user.level_title}` : ""}
             </h2>
-            <div className="pill">Streak: {user.streak_days} days</div>
+            <span className="pill">Streak: {user.streak_days} days</span>
           </article>
         </section>
-      ) : null}
+      )}
 
       <section className="grid grid-2">
         <article className="card">
@@ -153,80 +137,71 @@ export default function StudentDashboardPage() {
         <article className="card">
           <div className="kicker">Raffle Tickets Available</div>
           <h2 style={{ margin: "8px 0" }}>{payload?.data.raffle_tickets.available ?? 0}</h2>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-            {payload?.data.raffle_tickets.formula || ""}
-          </p>
+          <p className="text-muted text-sm m-0">{payload?.data.raffle_tickets.formula ?? ""}</p>
         </article>
       </section>
 
       <section className="grid grid-2">
         <article className="card">
           <div className="kicker">Season</div>
-          <h2 style={{ margin: "8px 0" }}>{payload?.data.season?.title || "No active season"}</h2>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-            {payload?.data.season?.status || "-"}
-          </p>
+          <h2 style={{ margin: "8px 0" }}>{payload?.data.season?.title ?? "No active season"}</h2>
+          <p className="text-muted text-sm m-0">{payload?.data.season?.status ?? "—"}</p>
         </article>
         <article className="card">
           <div className="kicker">League Rank</div>
           <h2 style={{ margin: "8px 0" }}>
-            {payload?.data.league?.individual_rank ? `#${payload?.data.league?.individual_rank}` : "Not ranked"}
+            {payload?.data.league?.individual_rank ? `#${payload.data.league.individual_rank}` : "Not ranked"}
           </h2>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
+          <p className="text-muted text-sm m-0">
             Points: {payload?.data.league?.individual_points ?? 0}
           </p>
         </article>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Quick Actions</h2>
-        {(payload?.data.quick_actions || []).length ? (
+      {(payload?.data.quick_actions ?? []).length > 0 && (
+        <section className="card grid gap-3">
+          <h2 className="section-heading">Quick Actions</h2>
           <div className="grid grid-2">
-            {(payload?.data.quick_actions || []).map((action, idx) => (
-              <article key={`${action.href}-${idx}`} className="card" style={{ padding: 12 }}>
-                <div style={{ fontWeight: 700 }}>{action.title}</div>
-                <div style={{ marginTop: 8 }}>
-                  <a href={action.href}>Open</a>
-                </div>
+            {(payload?.data.quick_actions ?? []).map((action, idx) => (
+              <article key={`${action.href}-${idx}`} className="card grid gap-2" style={{ padding: 12 }}>
+                <p className="fw-bold m-0">{action.title}</p>
+                <a href={action.href}>Open →</a>
               </article>
             ))}
           </div>
-        ) : (
-          <p style={{ margin: 0 }}>No quick actions right now.</p>
-        )}
-      </section>
+        </section>
+      )}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>XP by Track</h2>
-        <div className="grid grid-2">
-          {trackCards.map((row) => (
-            <article key={row.track} className="card" style={{ padding: 12 }}>
-              <div className="kicker">Track {row.track}</div>
-              <div style={{ fontWeight: 700, fontSize: 20 }}>{row.xp}</div>
-            </article>
-          ))}
-        </div>
-      </section>
+      {trackCards.length > 0 && (
+        <section className="card grid gap-3">
+          <h2 className="section-heading">XP by Track</h2>
+          <div className="grid grid-2">
+            {trackCards.map((row) => (
+              <article key={row.track} className="card grid gap-1" style={{ padding: 12 }}>
+                <div className="kicker">Track {row.track}</div>
+                <div className="fw-bold" style={{ fontSize: 20 }}>{row.xp}</div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Active Raffle</h2>
+      <section className="card grid gap-3">
+        <h2 className="section-heading">Active Raffle</h2>
         {payload?.data.raffle ? (
-          <>
-            <div className="pill">{payload.data.raffle.status}</div>
-            <div>
-              <strong>{payload.data.raffle.title}</strong>
-            </div>
-            <div>Prize: {payload.data.raffle.prize}</div>
-            <div>Raffle ID: {payload.data.raffle.raffle_id}</div>
-          </>
+          <div className="grid gap-2">
+            <span className="pill">{payload.data.raffle.status}</span>
+            <p className="fw-bold m-0">{payload.data.raffle.title}</p>
+            <p className="text-muted text-sm m-0">Prize: {payload.data.raffle.prize}</p>
+          </div>
         ) : (
-          <p style={{ margin: 0 }}>No active raffle right now.</p>
+          <p className="text-muted m-0">No active raffle right now.</p>
         )}
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Recent Notifications</h2>
-        {(payload?.data.notifications || []).length ? (
+      {(payload?.data.notifications ?? []).length > 0 && (
+        <section className="card grid gap-3">
+          <h2 className="section-heading">Recent Notifications</h2>
           <div className="table-wrap">
             <table>
               <thead>
@@ -238,24 +213,22 @@ export default function StudentDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {(payload?.data.notifications || []).map((n) => (
+                {(payload?.data.notifications ?? []).map((n) => (
                   <tr key={n.notification_id}>
-                    <td>{new Date(n.created_at).toLocaleString()}</td>
-                    <td>{n.kind}</td>
+                    <td className="text-sm text-muted">{new Date(n.created_at).toLocaleString()}</td>
+                    <td><span className="pill">{n.kind}</span></td>
                     <td>
-                      <div style={{ fontWeight: 600 }}>{n.title}</div>
-                      <div style={{ color: "var(--muted)", fontSize: 13 }}>{n.body}</div>
+                      <p className="fw-semi m-0">{n.title}</p>
+                      <p className="text-muted text-sm m-0">{n.body}</p>
                     </td>
-                    <td>{n.status}</td>
+                    <td><span className="pill">{n.status}</span></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
-          <p style={{ margin: 0 }}>No notifications yet.</p>
-        )}
-      </section>
+        </section>
+      )}
     </div>
   );
 }
