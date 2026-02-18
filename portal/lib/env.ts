@@ -33,6 +33,10 @@ export const env = {
   }
 };
 
+export function hasPortalBackendConfig() {
+  return Boolean(process.env.APPS_SCRIPT_WEB_APP_URL && process.env.APPS_SCRIPT_SHARED_SECRET);
+}
+
 export function assertPortalBackendConfigured() {
   required("APPS_SCRIPT_WEB_APP_URL");
   required("APPS_SCRIPT_SHARED_SECRET");

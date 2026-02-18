@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-client";
+import { clearCachedSession } from "@/lib/session-cache";
 
 export function AuthStatus() {
   const [user, setUser] = useState<User | null>(null);
@@ -11,6 +12,7 @@ export function AuthStatus() {
     const auth = getFirebaseAuth();
     if (!auth) return;
     return onAuthStateChanged(auth, (nextUser) => {
+      if (!nextUser) clearCachedSession();
       setUser(nextUser);
     });
   }, []);
@@ -24,7 +26,10 @@ export function AuthStatus() {
           className="secondary auth-signout"
           onClick={() => {
             const auth = getFirebaseAuth();
-            if (auth) void signOut(auth);
+            if (auth) {
+              clearCachedSession();
+              void signOut(auth);
+            }
           }}
         >
           Sign out

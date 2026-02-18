@@ -1,12 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { roleNavigation, flattenSections, findLabelForPath } from "@/components/navigation-config";
 import { Sidebar } from "@/components/sidebar";
 import { TopBar } from "@/components/top-bar";
-import { CommandPalette } from "@/components/command-palette";
 import type { NavSection } from "@/types/ui";
+
+const CommandPalette = dynamic(
+  () => import("@/components/command-palette").then((mod) => mod.CommandPalette),
+  { ssr: false }
+);
 
 function roleLabel(role: "STUDENT" | "ADMIN") {
   return role === "ADMIN" ? "Admin" : "Student";

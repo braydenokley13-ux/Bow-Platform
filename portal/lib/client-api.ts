@@ -23,7 +23,9 @@ export async function apiFetch<T = unknown>(
     }
   }
 
-  const allowDevHeaders = process.env.NODE_ENV !== "production";
+  const allowDevHeaders =
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_ENABLE_DEV_ACTOR_HEADERS === "1";
   if (allowDevHeaders && !headers.has("x-portal-email") && process.env.NEXT_PUBLIC_DEV_ACTOR_EMAIL) {
     headers.set("x-portal-email", process.env.NEXT_PUBLIC_DEV_ACTOR_EMAIL);
     headers.set("x-portal-role", process.env.NEXT_PUBLIC_DEV_ACTOR_ROLE || "ADMIN");

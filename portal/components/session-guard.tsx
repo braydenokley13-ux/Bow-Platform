@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/client-api";
+import { clearCachedSession, readCachedSession, writeCachedSession } from "@/lib/session-cache";
 
 interface SessionPayload {
   ok: boolean;
@@ -62,16 +63,37 @@ export function SessionGuard({
 
     return onAuthStateChanged(auth, (user) => {
       setHasFirebaseUser(Boolean(user));
+      if (!user) {
+        clearCachedSession();
+      }
       setAuthReady(true);
     });
   }, []);
 
   useEffect(() => {
     if (!authReady) return;
+    setReady(false);
+    setGuardError("");
 
     const devMode = Boolean(process.env.NEXT_PUBLIC_DEV_ACTOR_EMAIL);
     if (!hasFirebaseUser && !devMode) {
       router.replace(`/login?next=${encodeURIComponent(pathname || "/dashboard")}`);
+      return;
+    }
+
+    const cached = readCachedSession();
+    if (cached) {
+      if (cached.status === "SUSPENDED") {
+        router.replace("/login?reason=suspended");
+        return;
+      }
+
+      if (requireAdmin && !isAdminRole(cached.role)) {
+        router.replace("/dashboard");
+        return;
+      }
+
+      setReady(true);
       return;
     }
 
@@ -82,6 +104,7 @@ export function SessionGuard({
         const response = await withTimeout(apiFetch<SessionPayload>("/api/me/session"), 12000);
         const role = String(response?.data?.role || "").toUpperCase();
         const status = String(response?.data?.status || "ACTIVE").toUpperCase();
+        writeCachedSession(role, status);
 
         if (status === "SUSPENDED") {
           router.replace("/login?reason=suspended");

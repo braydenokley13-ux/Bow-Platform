@@ -12,7 +12,8 @@ function normalizeRole(value: string | undefined): Role {
 export async function getActorFromRequest(): Promise<PortalActor | null> {
   const h = await headers();
   const isProd = process.env.NODE_ENV === "production";
-  const allowDevFallback = !isProd;
+  const allowHeaderFallbackInProd = process.env.ALLOW_DEV_ACTOR_HEADERS === "1";
+  const allowDevFallback = !isProd || allowHeaderFallbackInProd;
 
   // Local/dev fallback so backend can be tested before auth wiring is complete.
   const devEmail = h.get("x-portal-email");

@@ -1,7 +1,21 @@
 "use client";
 
-import { AuthStatus } from "@/components/auth-status";
-import { DarkModeToggle } from "@/components/dark-mode-toggle";
+import dynamic from "next/dynamic";
+
+const AuthStatus = dynamic(
+  () => import("@/components/auth-status").then((mod) => mod.AuthStatus),
+  {
+    ssr: false,
+    loading: () => <span className="pill">Auth...</span>
+  }
+);
+
+const DarkModeToggle = dynamic(
+  () => import("@/components/dark-mode-toggle").then((mod) => mod.DarkModeToggle),
+  {
+    ssr: false
+  }
+);
 
 export function TopBar(props: {
   title: string;
