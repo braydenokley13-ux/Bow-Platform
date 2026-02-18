@@ -51,10 +51,10 @@ export default function AdminMasteryAnalyticsPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Framework Mastery Heatmap" subtitle="Module-level competency signal from scored decision journals" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <section className="card row-8-center">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh"}
         </button>

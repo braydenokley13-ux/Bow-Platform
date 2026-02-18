@@ -73,7 +73,7 @@ export default function AdminChangelogPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Portal Changelog"
         subtitle="Publish updates that appear on the student What's New page"
@@ -91,8 +91,8 @@ export default function AdminChangelogPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>New Entry</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">New Entry</h2>
         <div className="grid grid-2">
           <label>
             Category
@@ -136,16 +136,16 @@ export default function AdminChangelogPage() {
         </div>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
+      <section className="card stack-8">
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Published Entries ({entries.length})</h2>
+          <h2 className="title-18">Published Entries ({entries.length})</h2>
           <button className="secondary" onClick={() => void load()} disabled={busy}>
             {busy ? "Loading..." : "Refresh"}
           </button>
         </div>
 
         {entries.length === 0 && !busy ? (
-          <p style={{ margin: 0, opacity: 0.6 }}>No entries yet.</p>
+          <p className="m-0 text-muted-60">No entries yet.</p>
         ) : null}
 
         {entries.map((entry) => (

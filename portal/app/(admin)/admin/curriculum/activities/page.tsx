@@ -157,10 +157,10 @@ export default function CurriculumActivitiesPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Curriculum Activities" subtitle="Attach simulation URLs and claim-code patterns to each lesson" />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <div className="grid grid-2">
           <label>
             Lesson Filter
@@ -181,7 +181,7 @@ export default function CurriculumActivitiesPage() {
       </section>
 
       <form className="card" onSubmit={createActivity} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Create Activity</h2>
+        <h2 className="title-18">Create Activity</h2>
         <div className="grid grid-2">
           <label>
             Track
@@ -232,7 +232,7 @@ export default function CurriculumActivitiesPage() {
       </form>
 
       <form className="card" onSubmit={updateActivity} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Edit Activity</h2>
+        <h2 className="title-18">Edit Activity</h2>
         <label>
           Activity ID
           <input value={editId} onChange={(e) => setEditId(e.target.value)} placeholder="Click a row below" />

@@ -50,7 +50,7 @@ export default function ReferralsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Refer a Friend"
         subtitle="Share your personal invite link — earn a big XP bonus when they enroll"
@@ -64,7 +64,7 @@ export default function ReferralsPage() {
         </div>
       ) : data ? (
         <>
-          <section className="card" style={{ display: "grid", gap: 12 }}>
+          <section className="card stack-12">
             <div style={{ fontWeight: 700, fontSize: 15 }}>Your referral link</div>
             <div
               style={{
@@ -89,7 +89,7 @@ export default function ReferralsPage() {
             </div>
           </section>
 
-          <section className="card" style={{ display: "grid", gap: 8 }}>
+          <section className="card stack-8">
             <div style={{ fontWeight: 700, fontSize: 15 }}>How it works</div>
             <ol style={{ paddingLeft: 18, margin: 0, display: "grid", gap: 6, color: "var(--muted)", fontSize: 14 }}>
               <li>Share your link with a friend who might join a future BOW cohort.</li>
@@ -98,14 +98,14 @@ export default function ReferralsPage() {
             </ol>
           </section>
 
-          <section className="card" style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <section className="card row-24-wrap">
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 28, fontWeight: 800 }}>{data.uses_count}</div>
-              <div style={{ color: "var(--muted)", fontSize: 12 }}>Successful referrals</div>
+              <div className="muted-12">Successful referrals</div>
             </div>
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 28, fontWeight: 800 }}>{data.uses_count * 500}</div>
-              <div style={{ color: "var(--muted)", fontSize: 12 }}>XP earned via referrals</div>
+              <div className="muted-12">XP earned via referrals</div>
             </div>
           </section>
         </>

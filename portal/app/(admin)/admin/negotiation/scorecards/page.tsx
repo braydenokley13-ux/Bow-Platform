@@ -47,10 +47,10 @@ export default function AdminNegotiationScorecardsPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Negotiation Scorecards" subtitle="Coach-note history and rubric performance for negotiation scenarios" />
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh"}
         </button>

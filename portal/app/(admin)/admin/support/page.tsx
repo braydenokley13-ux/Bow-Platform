@@ -76,10 +76,10 @@ export default function AdminSupportPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Support Queue" subtitle="Review and resolve student support tickets" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh queue"}
         </button>
@@ -89,8 +89,8 @@ export default function AdminSupportPage() {
       {error ? <div className="banner banner-error">{error}</div> : null}
       {message ? <div className="banner banner-success">{message}</div> : null}
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Tickets</h2>
+      <section className="card stack-8">
+        <h2 className="title-18">Tickets</h2>
 
         {(tickets || []).length ? (
           <div className="table-wrap">
@@ -134,13 +134,13 @@ export default function AdminSupportPage() {
                       </td>
                       <td style={{ minWidth: 240 }}>
                         {resolved ? (
-                          <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                          <div className="muted-13">
                             Resolved by {t.resolved_by || "staff"}
                             <br />
                             {t.resolved_at ? new Date(t.resolved_at).toLocaleString() : ""}
                           </div>
                         ) : (
-                          <div className="grid" style={{ gap: 8 }}>
+                          <div className="grid stack-8">
                             <textarea
                               rows={3}
                               placeholder="Resolution note (optional)"
@@ -168,7 +168,7 @@ export default function AdminSupportPage() {
             </table>
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No support tickets yet.</p>
+          <p className="m-0">No support tickets yet.</p>
         )}
       </section>
     </div>

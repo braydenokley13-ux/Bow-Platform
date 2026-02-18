@@ -47,10 +47,10 @@ export default function AdminRafflesPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Raffle Manager" subtitle="Manual raffle lifecycle and winner draw" />
-      <form className="card" onSubmit={createRaffle} style={{ display: "grid", gap: 10, maxWidth: 640 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Create Raffle</h2>
+      <form className="card stack-10 max-w-640" onSubmit={createRaffle}>
+        <h2 className="title-18">Create Raffle</h2>
         <label>
           Title
           <input value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -66,8 +66,8 @@ export default function AdminRafflesPage() {
         <button>Create active raffle</button>
       </form>
 
-      <form className="card" onSubmit={closeDraw} style={{ display: "grid", gap: 10, maxWidth: 640 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Close & Draw</h2>
+      <form className="card stack-10 max-w-640" onSubmit={closeDraw}>
+        <h2 className="title-18">Close & Draw</h2>
         <label>
           Raffle ID
           <input value={raffleId} onChange={(e) => setRaffleId(e.target.value)} required />

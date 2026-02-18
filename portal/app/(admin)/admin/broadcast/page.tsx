@@ -35,13 +35,13 @@ export default function AdminBroadcastPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Broadcast Message"
         subtitle="Send an in-portal notification to all students"
       />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <label>
           Message
           <textarea

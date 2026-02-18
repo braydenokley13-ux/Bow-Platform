@@ -96,7 +96,7 @@ export default function ProfilePage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="My Profile" subtitle="Your public profile — visible to classmates and instructors" />
 
       {error ? (
@@ -107,7 +107,7 @@ export default function ProfilePage() {
 
       {busy && !profile ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>Loading profile...</p>
+          <p className="m-0 text-muted-60">Loading profile...</p>
         </section>
       ) : null}
 
@@ -132,11 +132,11 @@ export default function ProfilePage() {
           <section className="grid grid-2">
             <article className="card">
               <div className="kicker">XP</div>
-              <h2 style={{ margin: "8px 0" }}>{profile.xp.toLocaleString()}</h2>
+              <h2 className="my-8">{profile.xp.toLocaleString()}</h2>
             </article>
             <article className="card">
               <div className="kicker">Streak</div>
-              <h2 style={{ margin: "8px 0" }}>{profile.streak_days ?? 0} days</h2>
+              <h2 className="my-8">{profile.streak_days ?? 0} days</h2>
             </article>
           </section>
 
@@ -148,7 +148,7 @@ export default function ProfilePage() {
           ) : null}
 
           {(profile.badges ?? []).length > 0 ? (
-            <section className="card" style={{ display: "grid", gap: 8 }}>
+            <section className="card stack-8">
               <div className="kicker">Badges ({profile.badges!.length})</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {profile.badges!.map((b) => (
@@ -163,8 +163,8 @@ export default function ProfilePage() {
       ) : null}
 
       {editing ? (
-        <section className="card" style={{ display: "grid", gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Edit Profile</h2>
+        <section className="card stack-10">
+          <h2 className="title-18">Edit Profile</h2>
           <label>
             Display Name
             <input

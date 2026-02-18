@@ -166,15 +166,15 @@ export default function AdminSpotlightPage() {
   useEffect(() => { void loadStudents(); }, []);
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid gap-20">
       <PageTitle
         title="Student Spotlight Generator"
         subtitle="Generate a shareable highlight card for any student. Screenshot it for Zoom or the class feed."
       />
 
       {/* Select Student */}
-      <section className="card" style={{ display: "grid", gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Select a Student</h2>
+      <section className="card stack-12">
+        <h2 className="title-18">Select a Student</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {students.length > 0 ? (
             <select
@@ -211,9 +211,9 @@ export default function AdminSpotlightPage() {
 
       {/* Spotlight Card */}
       {spotlight && (
-        <section className="card" style={{ display: "grid", gap: 14 }}>
+        <section className="card stack-14">
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Spotlight Card</h2>
+            <h2 className="title-18">Spotlight Card</h2>
             <span style={{ color: "var(--muted)", fontSize: 13 }}>
               Screenshot this card to share in Zoom or the class feed
             </span>

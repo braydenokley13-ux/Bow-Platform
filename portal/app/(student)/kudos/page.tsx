@@ -77,13 +77,13 @@ export default function KudosPage() {
   const rest = kudos.filter((k) => !k.pinned);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Kudos Wall" subtitle="Public shoutouts — celebrate your classmates" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
       {statusMsg ? <section className="card"><div className="banner">{statusMsg}</div></section> : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <h2 style={{ margin: 0, fontSize: 16 }}>Send a Shoutout</h2>
         <div className="grid grid-2">
           <label>
@@ -114,7 +114,7 @@ export default function KudosPage() {
       </section>
 
       {pinned.length > 0 ? (
-        <section className="card" style={{ display: "grid", gap: 8 }}>
+        <section className="card stack-8">
           <div className="kicker">📌 Pinned by Instructor</div>
           {pinned.map((k) => <KudosCard key={k.kudos_id} k={k} />)}
         </section>
@@ -154,7 +154,7 @@ function KudosCard({ k }: { k: Kudos }) {
           {new Date(k.sent_at).toLocaleDateString()}
         </span>
       </div>
-      <p style={{ margin: 0 }}>{k.message}</p>
+      <p className="m-0">{k.message}</p>
     </div>
   );
 }

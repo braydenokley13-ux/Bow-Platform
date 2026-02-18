@@ -95,7 +95,7 @@ export default function AdminQuestsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Quest Manager" subtitle="Create personalized missions and reward logic" />
 
       <form className="card" onSubmit={onSave} style={{ display: "grid", gap: 10 }}>
@@ -161,7 +161,7 @@ export default function AdminQuestsPage() {
         <button disabled={saving}>{saving ? "Saving..." : "Save quest"}</button>
       </form>
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh quests"}
         </button>
@@ -185,15 +185,15 @@ export default function AdminQuestsPage() {
               <tr key={row.quest_id}>
                 <td>
                   <div style={{ fontWeight: 700 }}>{row.title}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{row.quest_id}</div>
+                  <div className="muted-12">{row.quest_id}</div>
                 </td>
                 <td>
                   <div>{row.target_type}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{row.target_json}</div>
+                  <div className="muted-12">{row.target_json}</div>
                 </td>
                 <td>
                   <div>{row.reward_points || 0} points</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{row.reward_badge || "No badge"}</div>
+                  <div className="muted-12">{row.reward_badge || "No badge"}</div>
                 </td>
                 <td>{row.difficulty || "Core"}</td>
                 <td>{String(row.enabled || "TRUE")}</td>

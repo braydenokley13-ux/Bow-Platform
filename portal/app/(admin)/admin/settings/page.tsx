@@ -50,7 +50,7 @@ export default function AdminSettingsPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Portal Settings"
         subtitle="Global configuration visible to students"
@@ -68,8 +68,8 @@ export default function AdminSettingsPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Zoom / Class Link</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">Zoom / Class Link</h2>
         <p style={{ margin: 0, opacity: 0.7, fontSize: 14 }}>
           Students see a {'"'}Join Next Class{'"'} button that always points here. Update it whenever the link changes.
         </p>

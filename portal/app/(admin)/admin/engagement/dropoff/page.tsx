@@ -42,10 +42,10 @@ export default function AdminEngagementDropoffPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Engagement Dropoff" subtitle="Students trending down in last 7 days" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh dropoff"}
         </button>
@@ -75,7 +75,7 @@ export default function AdminEngagementDropoffPage() {
               <tr key={row.email}>
                 <td>
                   <div>{row.display_name || row.email}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{row.email}</div>
+                  <div className="muted-12">{row.email}</div>
                 </td>
                 <td>{row.reason}</td>
                 <td>{row.inactivity_days} days</td>

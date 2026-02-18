@@ -37,7 +37,7 @@ export default function JoinClassPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Join Class"
         subtitle="The current Zoom link for BOW Sports Capital live sessions"
@@ -51,7 +51,7 @@ export default function JoinClassPage() {
 
       <section className="card" style={{ textAlign: "center", padding: 32 }}>
         {busy ? (
-          <p style={{ margin: 0, opacity: 0.6 }}>Loading class link...</p>
+          <p className="m-0 text-muted-60">Loading class link...</p>
         ) : url ? (
           <>
             <p style={{ margin: "0 0 20px", opacity: 0.7 }}>
@@ -72,7 +72,7 @@ export default function JoinClassPage() {
             </p>
           </>
         ) : (
-          <p style={{ margin: 0, opacity: 0.6 }}>
+          <p className="m-0 text-muted-60">
             No class link has been set yet. Check back before your next session.
           </p>
         )}

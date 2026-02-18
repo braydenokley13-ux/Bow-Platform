@@ -26,9 +26,9 @@ export default function AdminInvitesPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Invite Management" subtitle="Create private cohort invitations" />
-      <form className="card" onSubmit={onInvite} style={{ display: "grid", gap: 10, maxWidth: 540 }}>
+      <form className="card stack-10 max-w-540" onSubmit={onInvite}>
         <label>
           Email
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -46,7 +46,7 @@ export default function AdminInvitesPage() {
       {error ? <div className="banner banner-error">{error}</div> : null}
       {!error && result ? <div className="banner banner-success">Invite created successfully.</div> : null}
       {result ? (
-        <pre className="card" style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 13 }}>
+        <pre className="card pre-wrap-13">
           {JSON.stringify(result, null, 2)}
         </pre>
       ) : null}

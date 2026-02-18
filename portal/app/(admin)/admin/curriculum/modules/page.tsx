@@ -129,10 +129,10 @@ export default function CurriculumModulesPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Curriculum Modules" subtitle="Manage module blocks inside each program" />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <div className="grid grid-2">
           <label>
             Program Filter
@@ -153,7 +153,7 @@ export default function CurriculumModulesPage() {
       </section>
 
       <form className="card" onSubmit={createModule} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Create Module</h2>
+        <h2 className="title-18">Create Module</h2>
         <label>
           Module Title
           <input value={newModuleTitle} onChange={(e) => setNewModuleTitle(e.target.value)} required />
@@ -172,7 +172,7 @@ export default function CurriculumModulesPage() {
       </form>
 
       <form className="card" onSubmit={updateModule} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Edit Module</h2>
+        <h2 className="title-18">Edit Module</h2>
         <label>
           Module ID
           <input value={editId} onChange={(e) => setEditId(e.target.value)} placeholder="Click a row below" />

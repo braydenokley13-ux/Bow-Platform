@@ -73,13 +73,13 @@ export default function TimelinePage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Activity Timeline"
         subtitle="Your personal history — XP, badges, events, goals, and more"
       />
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -93,11 +93,11 @@ export default function TimelinePage() {
 
       {!busy && events.length === 0 ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>No activity recorded yet. Start engaging to see your history here.</p>
+          <p className="m-0 text-muted-60">No activity recorded yet. Start engaging to see your history here.</p>
         </section>
       ) : null}
 
-      <section className="card" style={{ padding: 0 }}>
+      <section className="card p-0">
         <div style={{ display: "grid" }}>
           {events.map((ev, idx) => (
             <div

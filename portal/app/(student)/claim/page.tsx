@@ -38,9 +38,9 @@ export default function ClaimPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Claim Center" subtitle="Submit lesson claim codes to earn XP" />
-      <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 10, maxWidth: 640 }}>
+      <form className="card stack-10 max-w-640" onSubmit={onSubmit}>
         <label>
           Claim Code
           <input value={code} onChange={(e) => setCode(e.target.value)} required />
@@ -67,7 +67,7 @@ export default function ClaimPage() {
       </form>
       {error ? <div className="banner banner-error">{error}</div> : null}
       {result ? (
-        <pre className="card" style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 13 }}>
+        <pre className="card pre-wrap-13">
           {JSON.stringify(result, null, 2)}
         </pre>
       ) : null}

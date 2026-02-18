@@ -28,7 +28,7 @@ const ANALYTICS_CARDS = [
 
 export default function AdminAnalyticsHubPage() {
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Analytics Hub"
         subtitle="Select a report to explore class performance and engagement"

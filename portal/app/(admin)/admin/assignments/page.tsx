@@ -38,7 +38,7 @@ export default function AdminAssignmentsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Assignments Manager" subtitle="Create or update assignment records" />
       <form className="card" onSubmit={onSave} style={{ display: "grid", gap: 10 }}>
         <div className="grid grid-2">
@@ -74,7 +74,7 @@ export default function AdminAssignmentsPage() {
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
         </label>
         <button>Save assignment</button>
-        {msg ? <p style={{ margin: 0 }}>{msg}</p> : null}
+        {msg ? <p className="m-0">{msg}</p> : null}
       </form>
       <FetchPanel endpoint="/api/admin/assignments" title="Assignment list" />
     </div>

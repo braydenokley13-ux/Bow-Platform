@@ -47,10 +47,10 @@ export default function ActivitiesPage() {
   }, [items]);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Activities & Modules" subtitle="Browse track content and launch lesson links" />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <div className="grid grid-2">
           <label>
             Track
@@ -79,8 +79,8 @@ export default function ActivitiesPage() {
 
       {grouped.length ? (
         grouped.map(([moduleKey, rows]) => (
-          <section key={moduleKey} className="card" style={{ display: "grid", gap: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Module {moduleKey}</h2>
+          <section key={moduleKey} className="card stack-8">
+            <h2 className="title-18">Module {moduleKey}</h2>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -119,7 +119,7 @@ export default function ActivitiesPage() {
         ))
       ) : (
         <section className="card">
-          <p style={{ margin: 0 }}>No activities found for the selected filters.</p>
+          <p className="m-0">No activities found for the selected filters.</p>
         </section>
       )}
     </div>

@@ -80,10 +80,10 @@ export default function StudentTranscriptPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Strategic Transcript" subtitle="Generate and verify your authenticated decision transcript" />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <div className="grid grid-2">
           <label>
             Program ID
@@ -105,8 +105,8 @@ export default function StudentTranscriptPage() {
       ) : null}
 
       {verifyResult ? (
-        <section className="card" style={{ display: "grid", gap: 6 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Verification Result</h2>
+        <section className="card stack-6">
+          <h2 className="title-18">Verification Result</h2>
           <div className="pill">Transcript ID: {verifyResult.transcript_id}</div>
           <div className="pill">Status: {verifyResult.verify_status}</div>
           <div className="pill">Email: {verifyResult.email}</div>

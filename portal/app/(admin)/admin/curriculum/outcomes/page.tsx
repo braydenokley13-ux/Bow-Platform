@@ -138,10 +138,10 @@ export default function CurriculumOutcomesPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Curriculum Outcomes" subtitle="Define measurable lesson outcomes and frameworks" />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <div className="grid grid-2">
           <label>
             Lesson Filter
@@ -162,7 +162,7 @@ export default function CurriculumOutcomesPage() {
       </section>
 
       <form className="card" onSubmit={createOutcome} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Create Outcome</h2>
+        <h2 className="title-18">Create Outcome</h2>
         <div className="grid grid-2">
           <label>
             Skill Name
@@ -185,7 +185,7 @@ export default function CurriculumOutcomesPage() {
       </form>
 
       <form className="card" onSubmit={updateOutcome} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Edit Outcome</h2>
+        <h2 className="title-18">Edit Outcome</h2>
         <label>
           Outcome ID
           <input value={editId} onChange={(e) => setEditId(e.target.value)} placeholder="Click a row below" />

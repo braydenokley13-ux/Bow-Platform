@@ -2,14 +2,14 @@ import { PageTitle } from "@/components/page-title";
 
 export default function AdminRunbookPage() {
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Instructor Runbook"
         subtitle="Manual fallback steps for launch week incidents"
       />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>1. Claim Flow Fails</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">1. Claim Flow Fails</h2>
         <ol style={{ margin: "0 0 0 20px", padding: 0, display: "grid", gap: 6 }}>
           <li>Capture student email, code, track, module, and lesson.</li>
           <li>Check `Claim_Codes` for code existence and `is_used` status.</li>
@@ -19,8 +19,8 @@ export default function AdminRunbookPage() {
         </ol>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>2. Raffle Entry Issues</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">2. Raffle Entry Issues</h2>
         <ol style={{ margin: "0 0 0 20px", padding: 0, display: "grid", gap: 6 }}>
           <li>Confirm one raffle is `ACTIVE` in `Raffles` sheet.</li>
           <li>Check student ticket balance (`floor(net_xp/100)` plus ticket ledger adjustments).</li>
@@ -30,8 +30,8 @@ export default function AdminRunbookPage() {
         </ol>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>3. Portal Outage Fallback</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">3. Portal Outage Fallback</h2>
         <ol style={{ margin: "0 0 0 20px", padding: 0, display: "grid", gap: 6 }}>
           <li>Switch class operations to existing form + sheets flow immediately.</li>
           <li>Continue collecting claims through Finish Form response tab.</li>
@@ -40,8 +40,8 @@ export default function AdminRunbookPage() {
         </ol>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>4. Daily Launch Checklist</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">4. Daily Launch Checklist</h2>
         <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
           <li>Open Admin Overview and confirm launch health card shows low errors.</li>
           <li>Open Launch Center and run smoke checks at least once before class starts.</li>
@@ -52,8 +52,8 @@ export default function AdminRunbookPage() {
         </ul>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>5. Manual Backup Steps (Do this every day in launch week)</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">5. Manual Backup Steps (Do this every day in launch week)</h2>
         <ol style={{ margin: "0 0 0 20px", padding: 0, display: "grid", gap: 6 }}>
           <li>Open the production Google Sheet.</li>
           <li>Click File, then Make a copy.</li>
@@ -63,8 +63,8 @@ export default function AdminRunbookPage() {
         </ol>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>6. CSV Export Steps (if you need offline snapshots)</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">6. CSV Export Steps (if you need offline snapshots)</h2>
         <ol style={{ margin: "0 0 0 20px", padding: 0, display: "grid", gap: 6 }}>
           <li>Open each critical tab one-by-one in Google Sheets.</li>
           <li>Click File, Download, Comma-separated values (.csv, current sheet).</li>

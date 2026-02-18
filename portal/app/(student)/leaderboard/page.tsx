@@ -7,9 +7,9 @@ import { FetchPanel } from "@/components/fetch-panel";
 export default function LeaderboardPage() {
   const [track, setTrack] = useState("all");
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Leaderboard" subtitle="Overall and track-specific standings" />
-      <section className="card" style={{ maxWidth: 320 }}>
+      <section className="card max-w-320">
         <label>
           Track
           <select value={track} onChange={(e) => setTrack(e.target.value)}>

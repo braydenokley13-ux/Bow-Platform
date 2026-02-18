@@ -41,10 +41,10 @@ export default function AdminInterventionTemplatesPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Intervention Templates" subtitle="Ready-to-use instructor coaching prompts by weakness dimension" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <section className="card row-8-center">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh"}
         </button>

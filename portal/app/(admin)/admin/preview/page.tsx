@@ -61,7 +61,7 @@ export default function AdminPreviewPage() {
   ];
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="View As Student"
         subtitle="Preview the portal exactly as a specific student sees it — for debugging and support"
@@ -121,7 +121,7 @@ export default function AdminPreviewPage() {
 
           {/* Quick stats */}
           {data.dashboard ? (
-            <section className="card" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+            <section className="card row-20-wrap">
               {[
                 { label: "Display name", value: (data.dashboard as PreviewDashboard).display_name ?? data.target_email },
                 { label: "XP", value: ((data.dashboard as PreviewDashboard).xp ?? 0).toLocaleString() },

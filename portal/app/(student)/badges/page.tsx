@@ -93,19 +93,19 @@ export default function BadgesPage() {
   const earnedCount = badges.filter((b) => b.earned).length;
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Badge Wall" subtitle="Every badge you can earn — collect them all" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
 
-      <section className="card" style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+      <section className="card row-14-wrap">
         <div>
           <div style={{ fontSize: 26, fontWeight: 800 }}>
             {earnedCount}<span style={{ fontSize: 14, fontWeight: 400, opacity: 0.55 }}>/{badges.length}</span>
           </div>
           <div style={{ fontSize: 12, opacity: 0.55 }}>badges earned</div>
         </div>
-        <button className="secondary" style={{ marginLeft: "auto", alignSelf: "center" }} onClick={() => void load()} disabled={busy}>
+        <button className="secondary ml-auto" style={{ alignSelf: "center" }} onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh"}
         </button>
       </section>
@@ -165,7 +165,7 @@ export default function BadgesPage() {
       </div>
 
       {filtered.length === 0 && !busy ? (
-        <section className="card"><p style={{ margin: 0, opacity: 0.6 }}>No badges match your filters.</p></section>
+        <section className="card"><p className="m-0 text-muted-60">No badges match your filters.</p></section>
       ) : null}
 
       {selected ? (
@@ -196,7 +196,7 @@ export default function BadgesPage() {
               </div>
             </div>
 
-            <p style={{ margin: 0 }}>{selected.description}</p>
+            <p className="m-0">{selected.description}</p>
 
             <div style={{ padding: "10px 14px", background: "var(--bg2, #f9fafb)", borderRadius: 8 }}>
               <div className="kicker" style={{ marginBottom: 4 }}>How to unlock</div>

@@ -25,15 +25,15 @@ export default function AdminChatPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Chat Moderation" subtitle="View messages and remove problematic posts" />
-      <form className="card" onSubmit={onModerate} style={{ display: "grid", gap: 10, maxWidth: 520 }}>
+      <form className="card stack-10 max-w-520" onSubmit={onModerate}>
         <label>
           Message ID to moderate
           <input value={messageId} onChange={(e) => setMessageId(e.target.value)} required />
         </label>
         <button className="danger">Moderate message</button>
-        {msg ? <p style={{ margin: 0 }}>{msg}</p> : null}
+        {msg ? <p className="m-0">{msg}</p> : null}
       </form>
       <FetchPanel endpoint="/api/admin/chat?limit=300" title="Recent chat messages" />
     </div>

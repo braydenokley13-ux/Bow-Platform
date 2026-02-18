@@ -2,6 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageTitle } from "@/components/page-title";
+import { PageSection } from "@/components/page-section";
+import { StatCard } from "@/components/stat-card";
+import { DataTable } from "@/components/data-table";
+import { ActionBar } from "@/components/action-bar";
+import { EmptyState } from "@/components/empty-state";
+import { FeedbackBanner } from "@/components/feedback-banner";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { apiFetch } from "@/lib/client-api";
 
 interface DashboardPayload {
@@ -90,172 +97,136 @@ export default function StudentDashboardPage() {
   }, [payload]);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Dashboard" subtitle="Your performance, raffle status, and recent updates" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={() => void load()} disabled={busy}>
-          {busy ? "Refreshing..." : "Refresh dashboard"}
-        </button>
-        {busy ? <span className="pill">Loading latest data...</span> : null}
-      </section>
-
-      {error ? (
-        <section className="card">
-          <div className="banner banner-error">
-            <strong>Dashboard load failed:</strong> {error}
-          </div>
-          <div style={{ marginTop: 10 }}>
-            <button onClick={() => void load()} className="secondary">
-              Retry
+      <PageSection
+        actions={
+          <ActionBar>
+            <button onClick={() => void load()} disabled={busy}>
+              {busy ? "Refreshing..." : "Refresh dashboard"}
             </button>
-          </div>
-        </section>
-      ) : null}
+            {busy ? <span className="pill">Loading latest data...</span> : null}
+          </ActionBar>
+        }
+      >
+        <p className="m-0 text-muted">Live snapshot from student APIs.</p>
+      </PageSection>
+
+      {error ? <FeedbackBanner kind="error">Dashboard load failed: {error}</FeedbackBanner> : null}
 
       {busy && !payload ? (
-        <section className="grid grid-2">
-          <article className="card">
-            <div className="skeleton sk-line" style={{ width: "40%" }} />
-            <div className="skeleton sk-title" />
-            <div className="skeleton sk-line" style={{ width: "70%" }} />
-          </article>
-          <article className="card">
-            <div className="skeleton sk-line" style={{ width: "40%" }} />
-            <div className="skeleton sk-title" />
-            <div className="skeleton sk-line" style={{ width: "70%" }} />
-          </article>
-        </section>
+        <div className="grid grid-2">
+          <LoadingSkeleton lines={3} />
+          <LoadingSkeleton lines={3} />
+        </div>
       ) : null}
 
       {user ? (
-        <section className="grid grid-2">
-          <article className="card">
-            <div className="kicker">Student</div>
-            <h2 style={{ margin: "6px 0" }}>{user.display_name || user.email}</h2>
-            <div className="pill">{user.email}</div>
-          </article>
-          <article className="card">
-            <div className="kicker">Level</div>
-            <h2 style={{ margin: "6px 0" }}>
-              {user.level} {user.level_title ? `· ${user.level_title}` : ""}
-            </h2>
-            <div className="pill">Streak: {user.streak_days} days</div>
-          </article>
-        </section>
+        <div className="grid grid-2">
+          <StatCard
+            label="Student"
+            value={user.display_name || user.email}
+            hint={user.email}
+            accent="brand"
+          />
+          <StatCard
+            label="Level"
+            value={`${user.level}${user.level_title ? ` · ${user.level_title}` : ""}`}
+            hint={`Streak: ${user.streak_days} days`}
+            accent="info"
+          />
+        </div>
       ) : null}
 
-      <section className="grid grid-2">
-        <article className="card">
-          <div className="kicker">Total XP</div>
-          <h2 style={{ margin: "8px 0" }}>{user?.xp ?? 0}</h2>
-        </article>
-        <article className="card">
-          <div className="kicker">Raffle Tickets Available</div>
-          <h2 style={{ margin: "8px 0" }}>{payload?.data.raffle_tickets.available ?? 0}</h2>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-            {payload?.data.raffle_tickets.formula || ""}
-          </p>
-        </article>
-      </section>
+      <div className="grid grid-2">
+        <StatCard label="Total XP" value={user?.xp ?? 0} accent="success" />
+        <StatCard
+          label="Raffle Tickets Available"
+          value={payload?.data.raffle_tickets.available ?? 0}
+          hint={payload?.data.raffle_tickets.formula || ""}
+          accent="brand"
+        />
+      </div>
 
-      <section className="grid grid-2">
-        <article className="card">
-          <div className="kicker">Season</div>
-          <h2 style={{ margin: "8px 0" }}>{payload?.data.season?.title || "No active season"}</h2>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-            {payload?.data.season?.status || "-"}
-          </p>
-        </article>
-        <article className="card">
-          <div className="kicker">League Rank</div>
-          <h2 style={{ margin: "8px 0" }}>
-            {payload?.data.league?.individual_rank ? `#${payload?.data.league?.individual_rank}` : "Not ranked"}
-          </h2>
-          <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-            Points: {payload?.data.league?.individual_points ?? 0}
-          </p>
-        </article>
-      </section>
+      <div className="grid grid-2">
+        <StatCard
+          label="Season"
+          value={payload?.data.season?.title || "No active season"}
+          hint={payload?.data.season?.status || "-"}
+          accent="info"
+        />
+        <StatCard
+          label="League Rank"
+          value={
+            payload?.data.league?.individual_rank
+              ? `#${payload?.data.league?.individual_rank}`
+              : "Not ranked"
+          }
+          hint={`Points: ${payload?.data.league?.individual_points ?? 0}`}
+          accent="brand"
+        />
+      </div>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Quick Actions</h2>
+      <PageSection title="Quick Actions">
         {(payload?.data.quick_actions || []).length ? (
           <div className="grid grid-2">
             {(payload?.data.quick_actions || []).map((action, idx) => (
-              <article key={`${action.href}-${idx}`} className="card" style={{ padding: 12 }}>
-                <div style={{ fontWeight: 700 }}>{action.title}</div>
-                <div style={{ marginTop: 8 }}>
+              <article key={`${action.href}-${idx}`} className="card p-12">
+                <div className="fw-700">{action.title}</div>
+                <div className="row-8" style={{ marginTop: 8 }}>
                   <a href={action.href}>Open</a>
                 </div>
               </article>
             ))}
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No quick actions right now.</p>
+          <EmptyState title="No quick actions" body="No quick actions right now." />
         )}
-      </section>
+      </PageSection>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>XP by Track</h2>
+      <PageSection title="XP by Track">
         <div className="grid grid-2">
           {trackCards.map((row) => (
-            <article key={row.track} className="card" style={{ padding: 12 }}>
-              <div className="kicker">Track {row.track}</div>
-              <div style={{ fontWeight: 700, fontSize: 20 }}>{row.xp}</div>
-            </article>
+            <StatCard key={row.track} label={`Track ${row.track}`} value={row.xp} accent="info" />
           ))}
         </div>
-      </section>
+      </PageSection>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Active Raffle</h2>
+      <PageSection title="Active Raffle">
         {payload?.data.raffle ? (
-          <>
+          <div className="stack-8">
             <div className="pill">{payload.data.raffle.status}</div>
             <div>
               <strong>{payload.data.raffle.title}</strong>
             </div>
             <div>Prize: {payload.data.raffle.prize}</div>
             <div>Raffle ID: {payload.data.raffle.raffle_id}</div>
-          </>
-        ) : (
-          <p style={{ margin: 0 }}>No active raffle right now.</p>
-        )}
-      </section>
-
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Recent Notifications</h2>
-        {(payload?.data.notifications || []).length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>When</th>
-                  <th>Kind</th>
-                  <th>Title</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(payload?.data.notifications || []).map((n) => (
-                  <tr key={n.notification_id}>
-                    <td>{new Date(n.created_at).toLocaleString()}</td>
-                    <td>{n.kind}</td>
-                    <td>
-                      <div style={{ fontWeight: 600 }}>{n.title}</div>
-                      <div style={{ color: "var(--muted)", fontSize: 13 }}>{n.body}</div>
-                    </td>
-                    <td>{n.status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No notifications yet.</p>
+          <EmptyState title="No active raffle" body="No active raffle right now." />
         )}
-      </section>
+      </PageSection>
+
+      <PageSection title="Recent Notifications">
+        {(payload?.data.notifications || []).length ? (
+          <DataTable headers={["When", "Kind", "Title", "Status"]} stickyHeader>
+            {(payload?.data.notifications || []).map((n) => (
+              <tr key={n.notification_id}>
+                <td>{new Date(n.created_at).toLocaleString()}</td>
+                <td>{n.kind}</td>
+                <td>
+                  <div className="fw-700">{n.title}</div>
+                  <div className="muted-13">{n.body}</div>
+                </td>
+                <td>{n.status}</td>
+              </tr>
+            ))}
+          </DataTable>
+        ) : (
+          <EmptyState title="No notifications" body="No notifications yet." />
+        )}
+      </PageSection>
     </div>
   );
 }

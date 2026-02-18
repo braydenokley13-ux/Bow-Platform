@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageTitle } from "@/components/page-title";
+import { PageSection } from "@/components/page-section";
+import { StatCard } from "@/components/stat-card";
+import { DataTable } from "@/components/data-table";
+import { ActionBar } from "@/components/action-bar";
+import { EmptyState } from "@/components/empty-state";
+import { FeedbackBanner } from "@/components/feedback-banner";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { apiFetch } from "@/lib/client-api";
 
 interface OverviewPayload {
@@ -84,19 +91,24 @@ export default function AdminOverviewPage() {
   const d = payload?.data;
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Admin Overview" subtitle="Class operations, engagement, and risk monitoring" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={() => void loadEverything()} disabled={busy}>
-          {busy ? "Refreshing..." : "Refresh overview"}
-        </button>
-        {busy ? <span className="pill">Loading latest data...</span> : null}
-      </section>
+      <PageSection
+        actions={
+          <ActionBar>
+            <button onClick={() => void loadEverything()} disabled={busy}>
+              {busy ? "Refreshing..." : "Refresh overview"}
+            </button>
+            {busy ? <span className="pill">Loading latest data...</span> : null}
+          </ActionBar>
+        }
+      >
+        <p className="m-0 text-muted">Use this page for launch-state monitoring and class health checks.</p>
+      </PageSection>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <div className="kicker">Quick Links</div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <PageSection title="Quick Links">
+        <ActionBar>
           <Link href="/admin/students" className="pill">Students</Link>
           <Link href="/admin/analytics" className="pill">Analytics</Link>
           <Link href="/admin/curriculum" className="pill">Curriculum</Link>
@@ -105,106 +117,54 @@ export default function AdminOverviewPage() {
           <Link href="/admin/invites" className="pill">Invites</Link>
           <Link href="/admin/audit-log" className="pill">Audit Log</Link>
           <Link href="/admin/launch" className="pill">Launch Center</Link>
-        </div>
-      </section>
+        </ActionBar>
+      </PageSection>
 
-      {error ? (
-        <section className="card">
-          <div className="banner banner-error">
-            <strong>Overview load failed:</strong> {error}
-          </div>
-          <div style={{ marginTop: 10 }}>
-            <button onClick={() => void loadEverything()} className="secondary">
-              Retry
-            </button>
-          </div>
-        </section>
-      ) : null}
+      {error ? <FeedbackBanner kind="error">Overview load failed: {error}</FeedbackBanner> : null}
 
       {busy && !payload ? (
-        <section className="grid grid-2">
-          <article className="card">
-            <div className="skeleton sk-line" style={{ width: "35%" }} />
-            <div className="skeleton sk-title" />
-          </article>
-          <article className="card">
-            <div className="skeleton sk-line" style={{ width: "35%" }} />
-            <div className="skeleton sk-title" />
-          </article>
-        </section>
+        <div className="grid grid-2">
+          <LoadingSkeleton lines={2} />
+          <LoadingSkeleton lines={2} />
+        </div>
       ) : null}
 
-      <section className="grid grid-2">
-        <article className="card">
-          <div className="kicker">Students</div>
-          <h2 style={{ margin: "8px 0" }}>{d?.student_count ?? 0}</h2>
-        </article>
-        <article className="card">
-          <div className="kicker">Portal Active</div>
-          <h2 style={{ margin: "8px 0" }}>{d?.portal_active_users ?? 0}</h2>
-        </article>
-        <article className="card">
-          <div className="kicker">Invited</div>
-          <h2 style={{ margin: "8px 0" }}>{d?.portal_invited_users ?? 0}</h2>
-        </article>
-        <article className="card">
-          <div className="kicker">Claims Today</div>
-          <h2 style={{ margin: "8px 0" }}>{d?.claims_today ?? 0}</h2>
-        </article>
-      </section>
+      <div className="grid grid-2">
+        <StatCard label="Students" value={d?.student_count ?? 0} accent="brand" />
+        <StatCard label="Portal Active" value={d?.portal_active_users ?? 0} accent="success" />
+        <StatCard label="Invited" value={d?.portal_invited_users ?? 0} accent="info" />
+        <StatCard label="Claims Today" value={d?.claims_today ?? 0} accent="brand" />
+      </div>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Launch Health (Last {d?.launch_health.window_hours ?? 24}h)</h2>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <PageSection title={`Launch Health (Last ${d?.launch_health.window_hours ?? 24}h)`}>
+        <ActionBar>
           <span className="pill">Readiness: {launchStatus?.overall_status || "UNKNOWN"}</span>
           <Link href="/admin/launch">Open Launch Center</Link>
-        </div>
-        {launchStatus?.checks?.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Check</th>
-                  <th>Status</th>
-                  <th>Detail</th>
-                </tr>
-              </thead>
-              <tbody>
-                {launchStatus.checks.slice(0, 3).map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.label}</td>
-                    <td>{c.status}</td>
-                    <td>{c.detail}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : null}
-        <div className="grid grid-2">
-          <article className="card" style={{ padding: 12 }}>
-            <div className="kicker">Claim Errors</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{d?.launch_health.claims_errors ?? 0}</div>
-          </article>
-          <article className="card" style={{ padding: 12 }}>
-            <div className="kicker">Auth Errors</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{d?.launch_health.auth_errors ?? 0}</div>
-          </article>
-          <article className="card" style={{ padding: 12 }}>
-            <div className="kicker">Action Failures</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{d?.launch_health.action_failures ?? 0}</div>
-          </article>
-          <article className="card" style={{ padding: 12 }}>
-            <div className="kicker">Open Support Tickets</div>
-            <div style={{ fontSize: 22, fontWeight: 700 }}>{d?.launch_health.support_open ?? 0}</div>
-          </article>
-        </div>
-      </section>
+        </ActionBar>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Raffle Status</h2>
+        {launchStatus?.checks?.length ? (
+          <DataTable headers={["Check", "Status", "Detail"]}>
+            {launchStatus.checks.slice(0, 3).map((c) => (
+              <tr key={c.id}>
+                <td>{c.label}</td>
+                <td>{c.status}</td>
+                <td>{c.detail}</td>
+              </tr>
+            ))}
+          </DataTable>
+        ) : null}
+
+        <div className="grid grid-2">
+          <StatCard label="Claim Errors" value={d?.launch_health.claims_errors ?? 0} accent="danger" />
+          <StatCard label="Auth Errors" value={d?.launch_health.auth_errors ?? 0} accent="danger" />
+          <StatCard label="Action Failures" value={d?.launch_health.action_failures ?? 0} accent="danger" />
+          <StatCard label="Open Support Tickets" value={d?.launch_health.support_open ?? 0} accent="info" />
+        </div>
+      </PageSection>
+
+      <PageSection title="Raffle Status">
         {d?.active_raffle ? (
-          <>
+          <div className="stack-8">
             <div className="pill">{d.active_raffle.status}</div>
             <div>
               <strong>{d.active_raffle.title}</strong>
@@ -212,39 +172,27 @@ export default function AdminOverviewPage() {
             <div>Prize: {d.active_raffle.prize}</div>
             <div>Entries: {d.active_raffle_entries}</div>
             <div>Raffle ID: {d.active_raffle.raffle_id}</div>
-          </>
-        ) : (
-          <p style={{ margin: 0 }}>No active raffle.</p>
-        )}
-      </section>
-
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Recent Errors</h2>
-        {(d?.recent_errors || []).length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Event</th>
-                  <th>Details</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(d?.recent_errors || []).map((r, idx) => (
-                  <tr key={`${r.ts}-${idx}`}>
-                    <td>{new Date(r.ts).toLocaleString()}</td>
-                    <td>{r.event}</td>
-                    <td style={{ maxWidth: 500, whiteSpace: "pre-wrap" }}>{r.details_json}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No recent errors.</p>
+          <EmptyState title="No active raffle" body="No active raffle." />
         )}
-      </section>
+      </PageSection>
+
+      <PageSection title="Recent Errors">
+        {(d?.recent_errors || []).length ? (
+          <DataTable headers={["Time", "Event", "Details"]}>
+            {(d?.recent_errors || []).map((r, idx) => (
+              <tr key={`${r.ts}-${idx}`}>
+                <td>{new Date(r.ts).toLocaleString()}</td>
+                <td>{r.event}</td>
+                <td className="muted-13" style={{ whiteSpace: "pre-wrap" }}>{r.details_json}</td>
+              </tr>
+            ))}
+          </DataTable>
+        ) : (
+          <EmptyState title="No recent errors" body="No recent errors." />
+        )}
+      </PageSection>
     </div>
   );
 }

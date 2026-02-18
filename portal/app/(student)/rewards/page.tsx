@@ -81,7 +81,7 @@ export default function RewardsPage() {
   const redemptions = payload?.data.my_redemptions ?? [];
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid gap-20">
       <PageTitle
         title="XP Rewards Catalog"
         subtitle="Spend your XP on exclusive rewards. Admin fulfills each redemption."
@@ -102,18 +102,18 @@ export default function RewardsPage() {
             {myXp.toLocaleString()} <span style={{ fontSize: 18, fontWeight: 600 }}>XP</span>
           </div>
         </div>
-        <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto" }}>
+        <button onClick={() => void load()} disabled={busy} className="secondary ml-auto">
           {busy ? "Loading..." : "Refresh"}
         </button>
       </section>
 
       {/* Catalog */}
-      <section className="card" style={{ display: "grid", gap: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Available Rewards</h2>
+      <section className="card stack-14">
+        <h2 className="title-18">Available Rewards</h2>
         {busy && !payload ? (
           <div className="grid grid-2" style={{ gap: 12 }}>
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="card" style={{ display: "grid", gap: 8 }}>
+              <div key={i} className="card stack-8">
                 <div className="skeleton sk-line" style={{ width: "60%" }} />
                 <div className="skeleton sk-title" style={{ width: "80%" }} />
                 <div className="skeleton sk-line" style={{ width: "40%" }} />
@@ -162,7 +162,7 @@ export default function RewardsPage() {
                         onClick={() => void redeem(item.reward_id, item.xp_cost)}
                         disabled={!canAfford || isRedeeming}
                         title={!canAfford ? `You need ${(item.xp_cost - myXp).toLocaleString()} more XP` : undefined}
-                        style={{ marginLeft: "auto" }}
+                        className="ml-auto"
                       >
                         {isRedeeming ? "Redeeming…" : canAfford ? "Redeem" : "Can't afford"}
                       </button>
@@ -181,13 +181,13 @@ export default function RewardsPage() {
       </section>
 
       {/* My Redemptions */}
-      <section className="card" style={{ display: "grid", gap: 14 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Your Redemptions</h2>
+      <section className="card stack-14">
+        <h2 className="title-18">Your Redemptions</h2>
         {redemptions.length === 0 ? (
           <p style={{ color: "var(--muted)", margin: 0 }}>You haven&apos;t redeemed anything yet.</p>
         ) : (
           <div className="table-wrap">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table className="table-inline">
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--border)" }}>
                   <th style={{ textAlign: "left", padding: "6px 8px", color: "var(--muted)", fontWeight: 600 }}>Reward</th>

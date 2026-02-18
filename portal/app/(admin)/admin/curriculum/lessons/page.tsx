@@ -143,10 +143,10 @@ export default function CurriculumLessonsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Curriculum Lessons" subtitle="Build lessons inside modules" />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <div className="grid grid-2">
           <label>
             Module Filter
@@ -167,7 +167,7 @@ export default function CurriculumLessonsPage() {
       </section>
 
       <form className="card" onSubmit={createLesson} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Create Lesson</h2>
+        <h2 className="title-18">Create Lesson</h2>
         <div className="grid grid-2">
           <label>
             Lesson ID (number)
@@ -194,7 +194,7 @@ export default function CurriculumLessonsPage() {
       </form>
 
       <form className="card" onSubmit={updateLesson} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Edit Lesson</h2>
+        <h2 className="title-18">Edit Lesson</h2>
         <label>
           Lesson Key
           <input value={editKey} onChange={(e) => setEditKey(e.target.value)} placeholder="Click a row below" />

@@ -66,7 +66,7 @@ export default function ReferPage() {
   const data = payload?.data;
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid gap-20">
       <PageTitle
         title="Refer a Friend"
         subtitle="Invite friends to a future BOW cohort. Earn XP when they enroll."
@@ -75,7 +75,7 @@ export default function ReferPage() {
       {error && <div className="banner banner-error"><strong>Error:</strong> {error}</div>}
 
       {/* Referral Link Card */}
-      <section className="card" style={{ display: "grid", gap: 14 }}>
+      <section className="card stack-14">
         <div>
           <div className="kicker">Your Personal Referral Link</div>
           <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 14 }}>
@@ -119,7 +119,7 @@ export default function ReferPage() {
 
       {/* Stats */}
       {data && (
-        <section className="card" style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+        <section className="card row-20-wrap">
           <div style={{ textAlign: "center" }}>
             <div className="kicker">Total Referrals</div>
             <div style={{ fontSize: 32, fontWeight: 800, color: "var(--brand)" }}>
@@ -142,9 +142,9 @@ export default function ReferPage() {
       )}
 
       {/* Referral History */}
-      <section className="card" style={{ display: "grid", gap: 12 }}>
+      <section className="card stack-12">
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Your Referrals</h2>
+          <h2 className="title-18">Your Referrals</h2>
           <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto", fontSize: 13, padding: "4px 10px" }}>
             {busy ? "Loading…" : "Refresh"}
           </button>
@@ -156,7 +156,7 @@ export default function ReferPage() {
           </p>
         ) : (
           <div className="table-wrap">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table className="table-inline">
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--border)" }}>
                   {["Friend", "Status", "XP Earned", "Date"].map((h) => (
@@ -188,7 +188,7 @@ export default function ReferPage() {
       </section>
 
       {/* How it works */}
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <h2 style={{ margin: 0, fontSize: 16 }}>How It Works</h2>
         <ol style={{ margin: 0, paddingLeft: 20, color: "var(--muted)", fontSize: 14, lineHeight: 1.7 }}>
           <li>Copy your unique referral link above.</li>

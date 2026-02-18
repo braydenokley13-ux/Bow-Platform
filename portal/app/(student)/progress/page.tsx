@@ -53,9 +53,9 @@ export default function ProgressPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Progress" subtitle="Track and module completion snapshot" />
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh progress"}
         </button>
@@ -93,8 +93,8 @@ export default function ProgressPage() {
       ) : null}
 
       {(payload?.data.tracks || []).map((track) => (
-        <section key={track.track} className="card" style={{ display: "grid", gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Track {track.track}</h2>
+        <section key={track.track} className="card stack-10">
+          <h2 className="title-18">Track {track.track}</h2>
           <div>
             <strong>
               {track.completed_lessons}/{track.total_lessons} lessons completed ({pct(track.completed_lessons, track.total_lessons)}%)
@@ -125,8 +125,8 @@ export default function ProgressPage() {
         </section>
       ))}
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Assignments Snapshot</h2>
+      <section className="card stack-8">
+        <h2 className="title-18">Assignments Snapshot</h2>
         <div className="table-wrap">
           <table>
             <thead>

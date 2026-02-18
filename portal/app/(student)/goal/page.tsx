@@ -61,7 +61,7 @@ export default function GoalPage() {
   const isDirty = draft !== saved;
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Season Goal"
         subtitle="Set one goal for the season — it stays pinned on your profile all semester"
@@ -85,7 +85,7 @@ export default function GoalPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <label>
           {saved ? "Update your goal" : "Set your season goal"}
           <textarea

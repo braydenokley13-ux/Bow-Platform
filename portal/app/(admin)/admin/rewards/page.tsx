@@ -105,14 +105,14 @@ export default function AdminRewardsPage() {
   const pending = redemptions.filter((r) => r.status === "pending");
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid gap-20">
       <PageTitle title="Rewards Catalog" subtitle="Create and manage XP reward items. Fulfill student redemptions." />
 
       {error && <div className="banner banner-error"><strong>Error:</strong> {error}</div>}
 
       {/* ── Create / Edit Form ─────────────────────────────────────────── */}
-      <section className="card" style={{ display: "grid", gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>{form.reward_id ? "Edit Reward" : "Add New Reward"}</h2>
+      <section className="card stack-12">
+        <h2 className="title-18">{form.reward_id ? "Edit Reward" : "Add New Reward"}</h2>
         <div className="grid grid-2" style={{ gap: 10 }}>
           <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
             Icon (emoji)
@@ -156,9 +156,9 @@ export default function AdminRewardsPage() {
       </section>
 
       {/* ── Pending Redemptions ────────────────────────────────────────── */}
-      <section className="card" style={{ display: "grid", gap: 12 }}>
+      <section className="card stack-12">
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Pending Redemptions</h2>
+          <h2 className="title-18">Pending Redemptions</h2>
           {pending.length > 0 && (
             <span className="pill" style={{ background: "#fef3c7", borderColor: "#d97706", color: "#92400e" }}>
               {pending.length} to fulfill
@@ -169,7 +169,7 @@ export default function AdminRewardsPage() {
           <p style={{ color: "var(--muted)", margin: 0 }}>No pending redemptions.</p>
         ) : (
           <div className="table-wrap">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table className="table-inline">
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--border)" }}>
                   {["Student", "Reward", "XP Cost", "Requested", "Action"].map((h) => (
@@ -200,9 +200,9 @@ export default function AdminRewardsPage() {
       </section>
 
       {/* ── Catalog ────────────────────────────────────────────────────── */}
-      <section className="card" style={{ display: "grid", gap: 12 }}>
+      <section className="card stack-12">
         <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Current Catalog</h2>
+          <h2 className="title-18">Current Catalog</h2>
           <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto", fontSize: 13, padding: "4px 10px" }}>
             {busy ? "Loading…" : "Refresh"}
           </button>
@@ -211,7 +211,7 @@ export default function AdminRewardsPage() {
           <p style={{ color: "var(--muted)", margin: 0 }}>No rewards in catalog yet.</p>
         ) : (
           <div className="table-wrap">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table className="table-inline">
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--border)" }}>
                   {["Icon", "Title", "Category", "XP Cost", "Status", "Edit"].map((h) => (

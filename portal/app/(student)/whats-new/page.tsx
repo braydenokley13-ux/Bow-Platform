@@ -47,7 +47,7 @@ export default function WhatsNewPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="What's New"
         subtitle="Recent updates and improvements to the BOW Sports Capital portal"
@@ -61,13 +61,13 @@ export default function WhatsNewPage() {
 
       {!busy && entries.length === 0 ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>No updates posted yet. Check back soon.</p>
+          <p className="m-0 text-muted-60">No updates posted yet. Check back soon.</p>
         </section>
       ) : null}
 
-      <div className="grid" style={{ gap: 10 }}>
+      <div className="grid stack-10">
         {entries.map((entry) => (
-          <article key={entry.entry_id} className="card" style={{ display: "grid", gap: 8 }}>
+          <article key={entry.entry_id} className="card stack-8">
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <span className="pill">{CATEGORY_LABEL[entry.category] ?? entry.category}</span>
               <span style={{ opacity: 0.45, fontSize: 13 }}>
@@ -79,7 +79,7 @@ export default function WhatsNewPage() {
               </span>
             </div>
             <h2 style={{ margin: 0, fontSize: 16 }}>{entry.title}</h2>
-            <p style={{ margin: 0, opacity: 0.75, whiteSpace: "pre-wrap" }}>{entry.body}</p>
+            <p className="m-0 text-muted-75" style={{ whiteSpace: "pre-wrap" }}>{entry.body}</p>
           </article>
         ))}
       </div>

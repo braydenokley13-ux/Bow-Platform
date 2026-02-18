@@ -87,7 +87,7 @@ export default function StudentJournalPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Decision Journal" subtitle="Submit your decision evidence after a verified claim code completion" />
 
       <form className="card" onSubmit={submitJournal} style={{ display: "grid", gap: 10 }}>

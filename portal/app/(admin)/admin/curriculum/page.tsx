@@ -3,6 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageTitle } from "@/components/page-title";
+import { PageSection } from "@/components/page-section";
+import { ActionBar } from "@/components/action-bar";
+import { StatCard } from "@/components/stat-card";
+import { FeedbackBanner } from "@/components/feedback-banner";
 import { apiFetch } from "@/lib/client-api";
 
 interface Envelope<T> {
@@ -134,109 +138,88 @@ export default function AdminCurriculumHomePage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Curriculum Studio"
         subtitle="Admin-managed Program -> Module -> Lesson -> Activity -> Outcome with publish safety"
       />
 
-      <section className="card" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-        <button onClick={() => void load()} disabled={busy}>
-          {busy ? "Refreshing..." : "Refresh studio"}
-        </button>
-        <Link href="/admin/curriculum/programs" className="pill">
-          Programs
-        </Link>
-        <Link href="/admin/curriculum/modules" className="pill">
-          Modules
-        </Link>
-        <Link href="/admin/curriculum/lessons" className="pill">
-          Lessons
-        </Link>
-        <Link href="/admin/curriculum/activities" className="pill">
-          Activities
-        </Link>
-        <Link href="/admin/curriculum/outcomes" className="pill">
-          Outcomes
-        </Link>
-        <Link href="/admin/curriculum/publish" className="pill">
-          Publish Console
-        </Link>
-      </section>
-
-      {error ? (
-        <section className="card">
-          <div className="banner banner-error">{error}</div>
-        </section>
-      ) : null}
-
-      <section className="grid grid-2">
-        <article className="card">
-          <div className="kicker">Draft Programs</div>
-          <h2 style={{ margin: "6px 0" }}>{counts.programs}</h2>
-        </article>
-        <article className="card">
-          <div className="kicker">Draft Modules</div>
-          <h2 style={{ margin: "6px 0" }}>{counts.modules}</h2>
-        </article>
-        <article className="card">
-          <div className="kicker">Draft Lessons</div>
-          <h2 style={{ margin: "6px 0" }}>{counts.lessons}</h2>
-        </article>
-        <article className="card">
-          <div className="kicker">Draft Activities</div>
-          <h2 style={{ margin: "6px 0" }}>{counts.activities}</h2>
-        </article>
-        <article className="card">
-          <div className="kicker">Draft Outcomes</div>
-          <h2 style={{ margin: "6px 0" }}>{counts.outcomes}</h2>
-        </article>
-      </section>
-
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Publish Controls</h2>
-        <label>
-          Publish Notes
-          <input value={publishNotes} onChange={(e) => setPublishNotes(e.target.value)} />
-        </label>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          {confirmPublish ? (
-            <>
-              <span className="pill">Confirm publish to students?</span>
-              <button onClick={() => { void publishNow(); setConfirmPublish(false); }}>
-                Yes, Publish Draft {"->"} Student
-              </button>
-              <button className="secondary" onClick={() => setConfirmPublish(false)}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button onClick={() => setConfirmPublish(true)}>
-              Publish Draft {"->"} Student
+      <PageSection
+        actions={
+          <ActionBar>
+            <button onClick={() => void load()} disabled={busy}>
+              {busy ? "Refreshing..." : "Refresh studio"}
             </button>
-          )}
-        </div>
+            <Link href="/admin/curriculum/programs" className="pill">Programs</Link>
+            <Link href="/admin/curriculum/modules" className="pill">Modules</Link>
+            <Link href="/admin/curriculum/lessons" className="pill">Lessons</Link>
+            <Link href="/admin/curriculum/activities" className="pill">Activities</Link>
+            <Link href="/admin/curriculum/outcomes" className="pill">Outcomes</Link>
+            <Link href="/admin/curriculum/publish" className="pill">Publish Console</Link>
+          </ActionBar>
+        }
+      >
+        <p className="m-0 text-muted">Use the studio controls below to publish or roll back curriculum safely.</p>
+      </PageSection>
 
-        <label>
-          Rollback Target Batch ID (optional)
-          <input
-            value={rollbackBatchId}
-            onChange={(e) => setRollbackBatchId(e.target.value)}
-            placeholder="Leave blank to auto-select previous batch"
-          />
-        </label>
-        <div>
-          <button className="secondary" onClick={() => void rollbackNow()}>
-            Rollback Published Curriculum
-          </button>
-        </div>
-      </section>
+      {error ? <FeedbackBanner kind="error">{error}</FeedbackBanner> : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Reorder Draft Entity</h2>
+      <div className="grid grid-2">
+        <StatCard label="Draft Programs" value={counts.programs} accent="brand" />
+        <StatCard label="Draft Modules" value={counts.modules} accent="info" />
+        <StatCard label="Draft Lessons" value={counts.lessons} accent="success" />
+        <StatCard label="Draft Activities" value={counts.activities} accent="brand" />
+        <StatCard label="Draft Outcomes" value={counts.outcomes} accent="info" />
+      </div>
+
+      <PageSection title="Publish Controls">
+        <div className="stack-10">
+          <label className="field">
+            <span>Publish Notes</span>
+            <input value={publishNotes} onChange={(e) => setPublishNotes(e.target.value)} />
+          </label>
+
+          <ActionBar>
+            {confirmPublish ? (
+              <>
+                <span className="pill">Confirm publish to students?</span>
+                <button
+                  onClick={() => {
+                    void publishNow();
+                    setConfirmPublish(false);
+                  }}
+                >
+                  Yes, Publish Draft {"->"} Student
+                </button>
+                <button className="secondary" onClick={() => setConfirmPublish(false)}>
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button onClick={() => setConfirmPublish(true)}>Publish Draft {"->"} Student</button>
+            )}
+          </ActionBar>
+
+          <label className="field">
+            <span>Rollback Target Batch ID (optional)</span>
+            <input
+              value={rollbackBatchId}
+              onChange={(e) => setRollbackBatchId(e.target.value)}
+              placeholder="Leave blank to auto-select previous batch"
+            />
+          </label>
+          <ActionBar>
+            <button className="secondary" onClick={() => void rollbackNow()}>
+              Rollback Published Curriculum
+            </button>
+          </ActionBar>
+        </div>
+      </PageSection>
+
+      <PageSection title="Reorder Draft Entity">
         <div className="grid grid-2">
-          <label>
-            Entity
+          <label className="field">
+            <span>Entity</span>
             <select value={reorderEntity} onChange={(e) => setReorderEntity(e.target.value)}>
               <option value="programs">Programs</option>
               <option value="modules">Modules</option>
@@ -245,8 +228,8 @@ export default function AdminCurriculumHomePage() {
               <option value="outcomes">Outcomes</option>
             </select>
           </label>
-          <label>
-            Ordered IDs (comma separated)
+          <label className="field">
+            <span>Ordered IDs (comma separated)</span>
             <input
               value={reorderIds}
               onChange={(e) => setReorderIds(e.target.value)}
@@ -254,19 +237,14 @@ export default function AdminCurriculumHomePage() {
             />
           </label>
         </div>
-        <div>
+        <ActionBar>
           <button onClick={() => void saveReorder()}>Save Draft Order</button>
-        </div>
-      </section>
+        </ActionBar>
+      </PageSection>
 
-      {statusMsg ? (
-        <section className="card">
-          <div className="banner">{statusMsg}</div>
-        </section>
-      ) : null}
+      {statusMsg ? <FeedbackBanner>{statusMsg}</FeedbackBanner> : null}
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Published Snapshot</h2>
+      <PageSection title="Published Snapshot">
         <div className="grid grid-2">
           <div className="pill">Programs: {published?.programs.length || 0}</div>
           <div className="pill">Modules: {published?.modules.length || 0}</div>
@@ -274,7 +252,7 @@ export default function AdminCurriculumHomePage() {
           <div className="pill">Activities: {published?.activities.length || 0}</div>
           <div className="pill">Outcomes: {published?.outcomes.length || 0}</div>
         </div>
-      </section>
+      </PageSection>
     </div>
   );
 }

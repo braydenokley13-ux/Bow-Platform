@@ -60,10 +60,10 @@ export default function StudentRecommendedPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Recommended Next Lessons" subtitle="Auto next-best-lesson guidance based on your weakest rubric dimension" />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <div className="grid grid-2">
           <label>
             Track Filter (optional)
@@ -89,8 +89,8 @@ export default function StudentRecommendedPage() {
       ) : null}
 
       {payload ? (
-        <section className="card" style={{ display: "grid", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Your Coaching Focus</h2>
+        <section className="card stack-8">
+          <h2 className="title-18">Your Coaching Focus</h2>
           <div className="pill">Weakest Dimension: {payload.weakest_dimension}</div>
           <div className="grid grid-2">
             <div className="pill">DQ: {payload.averages.decision_quality.toFixed(2)}</div>

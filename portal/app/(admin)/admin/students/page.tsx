@@ -80,7 +80,7 @@ export default function AdminStudentsPage() {
   );
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Student Roster" subtitle="Role, status, XP, and raffle ticket visibility" />
 
       <section className="card" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -108,7 +108,7 @@ export default function AdminStudentsPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ padding: 0 }}>
+      <section className="card p-0">
         <div className="table-wrap">
           <table>
             <thead>

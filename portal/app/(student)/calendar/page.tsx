@@ -87,7 +87,7 @@ export default function CalendarPage() {
   const kinds = Array.from(new Set(events.map((e) => e.kind)));
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Program Calendar" subtitle="Upcoming sessions, deadlines, events, and office hours" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
@@ -104,21 +104,21 @@ export default function CalendarPage() {
             {kindLabel(k)}
           </button>
         ))}
-        <button className="secondary" style={{ marginLeft: "auto" }} onClick={() => void load()} disabled={busy}>
+        <button className="secondary ml-auto" onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh"}
         </button>
       </section>
 
       {upcoming.length === 0 && !busy ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>
+          <p className="m-0 text-muted-60">
             No upcoming events{filterKind !== "all" ? ` of type "${kindLabel(filterKind)}"` : ""}.
           </p>
         </section>
       ) : null}
 
       {Array.from(grouped.entries()).map(([month, evs]) => (
-        <section key={month} className="card" style={{ padding: 0 }}>
+        <section key={month} className="card p-0">
           <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border, #e5e7eb)", fontWeight: 700, fontSize: 15 }}>
             {monthLabel(month)}
           </div>

@@ -71,7 +71,7 @@ export default function AdminPodsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Pod Manager" subtitle="Assign students into pods and monitor pod standings" />
 
       <form className="card" onSubmit={onAssign} style={{ display: "grid", gap: 10 }}>
@@ -95,7 +95,7 @@ export default function AdminPodsPage() {
         <button disabled={assigning}>{assigning ? "Assigning..." : "Assign Pods"}</button>
       </form>
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh pods"}
         </button>
@@ -118,13 +118,13 @@ export default function AdminPodsPage() {
               <tr key={row.pod_id}>
                 <td>
                   <div style={{ fontWeight: 700 }}>{row.name}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{row.pod_id}</div>
+                  <div className="muted-12">{row.pod_id}</div>
                 </td>
                 <td>{row.status}</td>
                 <td>{row.points || 0}</td>
                 <td>
                   <div>{row.member_count || 0} members</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>
+                  <div className="muted-12">
                     {(row.members || []).map((m) => m.display_name || m.email).join(", ") || "-"}
                   </div>
                 </td>

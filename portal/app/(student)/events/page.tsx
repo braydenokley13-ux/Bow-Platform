@@ -96,10 +96,10 @@ export default function StudentEventsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Live Events" subtitle="Join active events using claim-code proof" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh active events"}
         </button>
@@ -112,8 +112,8 @@ export default function StudentEventsPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Active Event List</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">Active Event List</h2>
         {events.length ? (
           <div className="table-wrap">
             <table>
@@ -130,7 +130,7 @@ export default function StudentEventsPage() {
                   <tr key={row.event_id}>
                     <td>
                       <div style={{ fontWeight: 700 }}>{row.title}</div>
-                      <div style={{ color: "var(--muted)", fontSize: 12 }}>{row.event_id}</div>
+                      <div className="muted-12">{row.event_id}</div>
                     </td>
                     <td>
                       Track {row.track || "Any"} | Module {row.module || "Any"}
@@ -146,12 +146,12 @@ export default function StudentEventsPage() {
             </table>
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No active events right now.</p>
+          <p className="m-0">No active events right now.</p>
         )}
       </section>
 
       <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Submit Event Entry</h2>
+        <h2 className="title-18">Submit Event Entry</h2>
         <div className="grid grid-2">
           <label>
             Event
@@ -197,7 +197,7 @@ export default function StudentEventsPage() {
       </form>
 
       {result ? (
-        <section className="card" style={{ display: "grid", gap: 6 }}>
+        <section className="card stack-6">
           <div className="banner banner-success">{result.message}</div>
           <div>Submission ID: {result.data?.submission_id}</div>
           <div>Score: {result.data?.score}</div>

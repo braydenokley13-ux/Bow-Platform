@@ -120,15 +120,15 @@ export default function DiscussionPage() {
 
   if (selected) {
     return (
-      <div className="grid" style={{ gap: 14 }}>
-        <section className="card" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div className="grid gap-14">
+        <section className="card row-8-center">
           <button className="secondary" onClick={() => setSelected(null)}>← Back</button>
           <span className="pill">{selected.reply_count} replies</span>
         </section>
 
         {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
 
-        <section className="card" style={{ display: "grid", gap: 8 }}>
+        <section className="card stack-8">
           {selected.module_id ? <div className="kicker">Module: {selected.module_id}</div> : null}
           <h2 style={{ margin: 0 }}>{selected.title}</h2>
           <p style={{ margin: 0, opacity: 0.8 }}>{selected.body}</p>
@@ -138,7 +138,7 @@ export default function DiscussionPage() {
         </section>
 
         {loadingThread ? (
-          <section className="card"><p style={{ margin: 0, opacity: 0.6 }}>Loading replies...</p></section>
+          <section className="card"><p className="m-0 text-muted-60">Loading replies...</p></section>
         ) : null}
 
         {(selected.replies ?? []).map((r) => (
@@ -159,7 +159,7 @@ export default function DiscussionPage() {
           </section>
         ))}
 
-        <section className="card" style={{ display: "grid", gap: 10 }}>
+        <section className="card stack-10">
           <label>
             Your reply
             <textarea
@@ -182,12 +182,12 @@ export default function DiscussionPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Class Discussion" subtitle="Async Q&A and discussion organized by module" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button onClick={() => void loadThreads()} disabled={busy}>{busy ? "Loading..." : "Refresh"}</button>
         <button onClick={() => setComposing((v) => !v)}>
           {composing ? "Cancel" : "+ New Thread"}
@@ -195,7 +195,7 @@ export default function DiscussionPage() {
       </section>
 
       {composing ? (
-        <section className="card" style={{ display: "grid", gap: 10 }}>
+        <section className="card stack-10">
           <h2 style={{ margin: 0, fontSize: 16 }}>New Discussion Thread</h2>
           <label>
             Title
@@ -226,18 +226,18 @@ export default function DiscussionPage() {
 
       {!busy && threads.length === 0 ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>No threads yet. Start a discussion!</p>
+          <p className="m-0 text-muted-60">No threads yet. Start a discussion!</p>
         </section>
       ) : null}
 
-      <div className="grid" style={{ gap: 8 }}>
+      <div className="grid stack-8">
         {threads.map((t) => (
           <button
             key={t.thread_id}
             onClick={() => void openThread(t)}
             style={{ all: "unset", cursor: "pointer", display: "block" }}
           >
-            <article className="card" style={{ display: "grid", gap: 4 }}>
+            <article className="card stack-4">
               <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
                 {t.module_id ? <span className="pill" style={{ fontSize: 12 }}>{t.module_id}</span> : null}
                 <h2 style={{ margin: 0, fontSize: 15 }}>{t.title}</h2>

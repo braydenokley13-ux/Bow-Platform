@@ -76,10 +76,10 @@ export default function StudentQuestsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Quests" subtitle="Complete missions and claim reward points and badges" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh quests"}
         </button>
@@ -97,8 +97,8 @@ export default function StudentQuestsPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Mission Board</h2>
+      <section className="card stack-8">
+        <h2 className="title-18">Mission Board</h2>
         {rows.length ? (
           <div className="table-wrap">
             <table>
@@ -120,15 +120,15 @@ export default function StudentQuestsPage() {
                     <tr key={quest.quest_id}>
                       <td>
                         <div style={{ fontWeight: 700 }}>{quest.title}</div>
-                        <div style={{ color: "var(--muted)", fontSize: 12 }}>{quest.description}</div>
-                        <div style={{ color: "var(--muted)", fontSize: 12 }}>Type: {quest.target_type}</div>
+                        <div className="muted-12">{quest.description}</div>
+                        <div className="muted-12">Type: {quest.target_type}</div>
                       </td>
                       <td>{quest.difficulty || "Core"}</td>
                       <td>
                         <div>
                           {quest.progress}/{quest.required}
                         </div>
-                        <div style={{ color: "var(--muted)", fontSize: 12 }}>{progressPct}% complete</div>
+                        <div className="muted-12">{progressPct}% complete</div>
                       </td>
                       <td>
                         {quest.reward_points} points
@@ -150,7 +150,7 @@ export default function StudentQuestsPage() {
             </table>
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No quests configured yet.</p>
+          <p className="m-0">No quests configured yet.</p>
         )}
       </section>
     </div>

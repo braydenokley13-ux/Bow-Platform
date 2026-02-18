@@ -102,13 +102,13 @@ export default function AdminCalendarPage() {
       setForm((prev) => ({ ...prev, [k]: e.target.value }));
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Calendar Manager" subtitle="Create, edit, and remove class calendar entries" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
       {statusMsg ? <section className="card"><div className="banner">{statusMsg}</div></section> : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <h2 style={{ margin: 0, fontSize: 16 }}>{editId ? "Edit Event" : "New Event"}</h2>
         <div className="grid grid-2">
           <label>
@@ -156,12 +156,12 @@ export default function AdminCalendarPage() {
         </div>
       </section>
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button className="secondary" onClick={() => void load()} disabled={busy}>{busy ? "Loading..." : "Refresh"}</button>
         <span style={{ fontSize: 13, opacity: 0.5, alignSelf: "center" }}>{events.length} events</span>
       </section>
 
-      <section className="card" style={{ padding: 0 }}>
+      <section className="card p-0">
         <div className="table-wrap">
           <table>
             <thead>

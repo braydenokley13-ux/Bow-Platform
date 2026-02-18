@@ -88,13 +88,13 @@ export default function AdminDeepDivePage() {
   }, {});
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Deep Dive Manager" subtitle="Curate optional reading, video, and podcast links per module" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
       {statusMsg ? <section className="card"><div className="banner">{statusMsg}</div></section> : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <h2 style={{ margin: 0, fontSize: 16 }}>Add Link</h2>
         <div className="grid grid-2">
           <label>
@@ -134,13 +134,13 @@ export default function AdminDeepDivePage() {
         </div>
       </section>
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button className="secondary" onClick={() => void load()} disabled={busy}>{busy ? "Loading..." : "Refresh"}</button>
         <span style={{ fontSize: 13, opacity: 0.5, alignSelf: "center" }}>{links.length} links total</span>
       </section>
 
       {Object.entries(grouped).map(([modId, modLinks]) => (
-        <section key={modId} className="card" style={{ padding: 0 }}>
+        <section key={modId} className="card p-0">
           <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border, #e5e7eb)", fontWeight: 700 }}>{modId}</div>
           <div className="table-wrap">
             <table>
@@ -182,7 +182,7 @@ export default function AdminDeepDivePage() {
       ))}
 
       {links.length === 0 && !busy ? (
-        <section className="card"><p style={{ margin: 0, opacity: 0.6 }}>No links added yet.</p></section>
+        <section className="card"><p className="m-0 text-muted-60">No links added yet.</p></section>
       ) : null}
     </div>
   );

@@ -79,12 +79,12 @@ export default function DeepDivePage() {
   const totalXP = links.filter((l) => l.consumed).reduce((s, l) => s + l.xp_reward, 0);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Deep Dive" subtitle="Optional reading, videos, and podcasts — earn XP for each one you consume" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
 
-      <section className="card" style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+      <section className="card row-14-wrap">
         <div>
           <div style={{ fontSize: 26, fontWeight: 800 }}>{consumedCount}<span style={{ fontSize: 14, fontWeight: 400, opacity: 0.55 }}>/{links.length}</span></div>
           <div style={{ fontSize: 12, opacity: 0.55 }}>items consumed</div>
@@ -93,7 +93,7 @@ export default function DeepDivePage() {
           <div style={{ fontSize: 26, fontWeight: 800 }}>+{totalXP}</div>
           <div style={{ fontSize: 12, opacity: 0.55 }}>XP earned</div>
         </div>
-        <button className="secondary" style={{ marginLeft: "auto", alignSelf: "center" }} onClick={() => void load()} disabled={busy}>
+        <button className="secondary ml-auto" style={{ alignSelf: "center" }} onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh"}
         </button>
       </section>
@@ -107,12 +107,12 @@ export default function DeepDivePage() {
 
       {Object.keys(grouped).length === 0 && !busy ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>No deep-dive links available yet.</p>
+          <p className="m-0 text-muted-60">No deep-dive links available yet.</p>
         </section>
       ) : null}
 
       {Object.entries(grouped).map(([modId, modLinks]) => (
-        <section key={modId} className="card" style={{ padding: 0 }}>
+        <section key={modId} className="card p-0">
           <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--border, #e5e7eb)", display: "flex", alignItems: "center", gap: 8 }}>
             <span style={{ fontWeight: 700, fontSize: 15 }}>{modId}</span>
             <span className="pill" style={{ fontSize: 12 }}>

@@ -48,12 +48,12 @@ export default function TrophyCasePage() {
   useEffect(() => { void load(); }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Trophy Case" subtitle="Permanent record of your top-3 season finishes" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button className="secondary" onClick={() => void load()} disabled={busy}>{busy ? "Loading..." : "Refresh"}</button>
         <span style={{ fontSize: 13, opacity: 0.5, alignSelf: "center" }}>
           {trophies.length} trophy{trophies.length !== 1 ? "s" : ""}
@@ -64,7 +64,7 @@ export default function TrophyCasePage() {
         <section className="card">
           <div style={{ textAlign: "center", padding: "32px 0" }}>
             <div style={{ fontSize: 64, marginBottom: 12 }}>🏆</div>
-            <p style={{ margin: 0, opacity: 0.6 }}>
+            <p className="m-0 text-muted-60">
               No trophies yet. Finish in the top 3 at the end of a season to earn one.
             </p>
           </div>

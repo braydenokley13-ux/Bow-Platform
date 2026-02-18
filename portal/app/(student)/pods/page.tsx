@@ -99,10 +99,10 @@ export default function StudentPodsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Team Pods" subtitle="Small-team competition with private-by-default member visibility" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh pod"}
         </button>
@@ -120,20 +120,20 @@ export default function StudentPodsPage() {
           <section className="grid grid-2">
             <article className="card">
               <div className="kicker">Pod</div>
-              <h2 style={{ margin: "8px 0" }}>{pod.pod_name}</h2>
-              <p style={{ margin: 0, color: "var(--muted)" }}>
+              <h2 className="my-8">{pod.pod_name}</h2>
+              <p className="m-0 text-muted">
                 Rank #{pod.rank || "-"} | {pod.points || 0} points
               </p>
             </article>
             <article className="card">
               <div className="kicker">Members</div>
-              <h2 style={{ margin: "8px 0" }}>{pod.members?.length || 0}</h2>
-              <p style={{ margin: 0, color: "var(--muted)" }}>Only your pod roster is visible.</p>
+              <h2 className="my-8">{pod.members?.length || 0}</h2>
+              <p className="m-0 text-muted">Only your pod roster is visible.</p>
             </article>
           </section>
 
-          <section className="card" style={{ display: "grid", gap: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Pod Roster</h2>
+          <section className="card stack-8">
+            <h2 className="title-18">Pod Roster</h2>
             <div className="table-wrap">
               <table>
                 <thead>
@@ -157,7 +157,7 @@ export default function StudentPodsPage() {
           </section>
 
           <form className="card" onSubmit={onSendKudos} style={{ display: "grid", gap: 10 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Send Kudos</h2>
+            <h2 className="title-18">Send Kudos</h2>
             <div className="grid grid-2">
               <label>
                 Teammate
@@ -192,8 +192,8 @@ export default function StudentPodsPage() {
             </section>
           ) : null}
 
-          <section className="card" style={{ display: "grid", gap: 8 }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Recent Pod Kudos</h2>
+          <section className="card stack-8">
+            <h2 className="title-18">Recent Pod Kudos</h2>
             {(pod.recent_kudos || []).length ? (
               <div className="table-wrap">
                 <table>
@@ -218,13 +218,13 @@ export default function StudentPodsPage() {
                 </table>
               </div>
             ) : (
-              <p style={{ margin: 0 }}>No kudos yet.</p>
+              <p className="m-0">No kudos yet.</p>
             )}
           </section>
         </>
       ) : (
         <section className="card">
-          <p style={{ margin: 0 }}>No pod assignment found in the active season yet.</p>
+          <p className="m-0">No pod assignment found in the active season yet.</p>
         </section>
       )}
     </div>

@@ -119,10 +119,10 @@ export default function AdminLaunchPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Launch Readiness" subtitle="One place to confirm production health before and during launch week" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh checks"}
         </button>
@@ -139,37 +139,37 @@ export default function AdminLaunchPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Platform Health</h2>
+      <section className="card stack-8">
+        <h2 className="title-18">Platform Health</h2>
         {health ? (
           <>
             <div className={`banner ${toneForStatus(health.status)}`}>Status: {health.status}</div>
             <div className="grid grid-2">
-              <article className="card" style={{ padding: 12 }}>
+              <article className="card p-12">
                 <div className="kicker">Apps Script URL</div>
                 <div>{health.checks.apps_script_url_configured ? "Configured" : "Missing"}</div>
               </article>
-              <article className="card" style={{ padding: 12 }}>
+              <article className="card p-12">
                 <div className="kicker">Apps Script Secret</div>
                 <div>{health.checks.apps_script_secret_configured ? "Configured" : "Missing"}</div>
               </article>
-              <article className="card" style={{ padding: 12 }}>
+              <article className="card p-12">
                 <div className="kicker">Firebase Admin</div>
                 <div>{health.checks.firebase_project_configured ? "Configured" : "Missing"}</div>
               </article>
-              <article className="card" style={{ padding: 12 }}>
+              <article className="card p-12">
                 <div className="kicker">Backend Errors (24h)</div>
                 <div>{health.backend?.errors_24h?.total_errors ?? 0}</div>
               </article>
             </div>
           </>
         ) : (
-          <p style={{ margin: 0 }}>No health data yet.</p>
+          <p className="m-0">No health data yet.</p>
         )}
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Launch Checklist</h2>
+      <section className="card stack-8">
+        <h2 className="title-18">Launch Checklist</h2>
         {readiness?.checks?.length ? (
           <div className="table-wrap">
             <table>
@@ -194,12 +194,12 @@ export default function AdminLaunchPage() {
             </table>
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No checklist data yet.</p>
+          <p className="m-0">No checklist data yet.</p>
         )}
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Smoke Test Results</h2>
+      <section className="card stack-8">
+        <h2 className="title-18">Smoke Test Results</h2>
         {smoke?.checks?.length ? (
           <div className="table-wrap">
             <table>
@@ -224,7 +224,7 @@ export default function AdminLaunchPage() {
             </table>
           </div>
         ) : (
-          <p style={{ margin: 0 }}>Run the smoke test to generate results.</p>
+          <p className="m-0">Run the smoke test to generate results.</p>
         )}
       </section>
     </div>

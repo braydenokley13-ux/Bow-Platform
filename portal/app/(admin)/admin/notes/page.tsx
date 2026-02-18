@@ -108,7 +108,7 @@ export default function AdminNotesPage() {
   const studentName = students.find((s) => s.email === selectedEmail)?.display_name;
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid gap-20">
       <PageTitle
         title="Private Student Notes"
         subtitle="Freeform notes on students — never visible to students. Timestamped and author-attributed."
@@ -116,7 +116,7 @@ export default function AdminNotesPage() {
 
       <div className="grid-2" style={{ display: "grid", gap: 14, gridTemplateColumns: "minmax(220px, 280px) 1fr", alignItems: "start" }}>
         {/* Student Picker */}
-        <aside className="card" style={{ display: "grid", gap: 10 }}>
+        <aside className="card stack-10">
           <div style={{ fontWeight: 700, fontSize: 15 }}>Select Student</div>
           <input
             type="text"
@@ -158,7 +158,7 @@ export default function AdminNotesPage() {
         </aside>
 
         {/* Notes Panel */}
-        <div className="card" style={{ display: "grid", gap: 14 }}>
+        <div className="card stack-14">
           {!selectedEmail ? (
             <p style={{ color: "var(--muted)", margin: 0 }}>Select a student to view and add notes.</p>
           ) : (

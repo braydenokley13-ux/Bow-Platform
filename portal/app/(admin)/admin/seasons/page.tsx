@@ -78,7 +78,7 @@ export default function AdminSeasonsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Season Manager" subtitle="Create and manage one active season at a time" />
 
       <form className="card" onSubmit={onCreate} style={{ display: "grid", gap: 10 }}>
@@ -111,7 +111,7 @@ export default function AdminSeasonsPage() {
         <button disabled={saving}>{saving ? "Saving..." : "Save season"}</button>
       </form>
 
-      <section className="card" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <section className="card row-8-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh seasons"}
         </button>
@@ -136,7 +136,7 @@ export default function AdminSeasonsPage() {
               <tr key={row.season_id}>
                 <td>
                   <div style={{ fontWeight: 700 }}>{row.title}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{row.season_id}</div>
+                  <div className="muted-12">{row.season_id}</div>
                 </td>
                 <td>{row.status}</td>
                 <td>{row.starts_at ? new Date(row.starts_at).toLocaleString() : "-"}</td>

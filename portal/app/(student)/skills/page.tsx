@@ -55,13 +55,13 @@ export default function SkillsPage() {
     : DIMENSIONS.map((d) => ({ label: d.label, value: 0 }));
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Skill Profile"
         subtitle="Your relative strength across the 5 BOW Sports Capital competency areas"
       />
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -75,7 +75,7 @@ export default function SkillsPage() {
 
       <section className="card" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16 }}>
         {busy && !skills ? (
-          <p style={{ margin: 0, opacity: 0.6 }}>Loading skill data...</p>
+          <p className="m-0 text-muted-60">Loading skill data...</p>
         ) : (
           <RadarChart dimensions={dimensions} size={320} />
         )}
@@ -89,7 +89,7 @@ export default function SkillsPage() {
 
       <section className="grid grid-2">
         {dimensions.map((d) => (
-          <article key={d.label} className="card" style={{ padding: 12 }}>
+          <article key={d.label} className="card p-12">
             <div className="kicker">{d.label}</div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
               <div

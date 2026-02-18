@@ -95,10 +95,10 @@ export default function CurriculumProgramsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Curriculum Programs" subtitle="Create and edit top-level programs" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <section className="card row-8-center">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh"}
         </button>
@@ -106,7 +106,7 @@ export default function CurriculumProgramsPage() {
       </section>
 
       <form className="card" onSubmit={createProgram} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Create Program</h2>
+        <h2 className="title-18">Create Program</h2>
         <div className="grid grid-2">
           <label>
             Name
@@ -125,7 +125,7 @@ export default function CurriculumProgramsPage() {
       </form>
 
       <form className="card" onSubmit={updateProgram} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Edit Program</h2>
+        <h2 className="title-18">Edit Program</h2>
         <label>
           Program ID
           <input value={editId} onChange={(e) => setEditId(e.target.value)} placeholder="Click a row below" />

@@ -29,7 +29,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Class Chat" subtitle="Live cohort discussion" />
       <form className="card" onSubmit={sendMessage} style={{ display: "grid", gap: 10 }}>
         <label>
@@ -37,7 +37,7 @@ export default function ChatPage() {
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={1200} required />
         </label>
         <button disabled={busy}>{busy ? "Sending..." : "Send"}</button>
-        {status ? <p style={{ margin: 0 }}>{status}</p> : null}
+        {status ? <p className="m-0">{status}</p> : null}
       </form>
       <FetchPanel endpoint="/api/chat/messages?limit=200" title="Recent messages" />
     </div>

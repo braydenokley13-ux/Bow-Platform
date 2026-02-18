@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
+import { PageSection } from "@/components/page-section";
+import { StatCard } from "@/components/stat-card";
+import { DataTable } from "@/components/data-table";
+import { ActionBar } from "@/components/action-bar";
+import { EmptyState } from "@/components/empty-state";
+import { FeedbackBanner } from "@/components/feedback-banner";
 import { apiFetch } from "@/lib/client-api";
 
 interface HomeFeedAction {
@@ -82,76 +88,67 @@ export default function StudentHomeFeedPage() {
   const d = payload?.data;
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
-      <PageTitle
-        title="Daily Home"
-        subtitle="Your next 3 best actions, live competition, and team momentum"
-      />
+    <div className="grid gap-14">
+      <PageTitle title="Daily Home" subtitle="Your next 3 best actions, live competition, and team momentum" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-        <button onClick={() => void load()} disabled={busy}>
-          {busy ? "Refreshing..." : "Refresh home feed"}
-        </button>
-        <span className="pill">Private cohort mode</span>
-      </section>
+      <PageSection
+        actions={
+          <ActionBar>
+            <button onClick={() => void load()} disabled={busy}>
+              {busy ? "Refreshing..." : "Refresh home feed"}
+            </button>
+            <span className="pill">Private cohort mode</span>
+          </ActionBar>
+        }
+      >
+        <p className="m-0 text-muted">Start here each day for your highest-value next actions.</p>
+      </PageSection>
 
-      {error ? (
-        <section className="card">
-          <div className="banner banner-error">{error}</div>
-        </section>
-      ) : null}
+      {error ? <FeedbackBanner kind="error">{error}</FeedbackBanner> : null}
 
-      <section className="grid grid-2">
-        <article className="card">
-          <div className="kicker">Active Season</div>
-          <h2 style={{ margin: "8px 0" }}>{d?.season?.title || "No active season"}</h2>
-          {d?.season ? (
-            <p style={{ margin: 0, color: "var(--muted)" }}>
-              Ends: {d.season.ends_at ? new Date(d.season.ends_at).toLocaleString() : "TBD"}
-            </p>
-          ) : null}
-        </article>
-        <article className="card">
-          <div className="kicker">League Rank</div>
-          <h2 style={{ margin: "8px 0" }}>
-            {d?.my_standing?.rank ? `#${d.my_standing.rank}` : "Not ranked yet"}
-          </h2>
-          <p style={{ margin: 0, color: "var(--muted)" }}>
-            Points: {d?.my_standing?.points ?? 0} | Streak: {d?.rewards?.streak_days ?? 0} days
-          </p>
-        </article>
-      </section>
+      <div className="grid grid-2">
+        <StatCard
+          label="Active Season"
+          value={d?.season?.title || "No active season"}
+          hint={d?.season ? `Ends: ${d.season.ends_at ? new Date(d.season.ends_at).toLocaleString() : "TBD"}` : ""}
+          accent="brand"
+        />
+        <StatCard
+          label="League Rank"
+          value={d?.my_standing?.rank ? `#${d.my_standing.rank}` : "Not ranked yet"}
+          hint={`Points: ${d?.my_standing?.points ?? 0} | Streak: ${d?.rewards?.streak_days ?? 0} days`}
+          accent="info"
+        />
+      </div>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Your 3 Next Actions</h2>
+      <PageSection title="Your 3 Next Actions">
         {(d?.quick_actions || []).length ? (
           <div className="grid grid-2">
             {(d?.quick_actions || []).map((action, idx) => (
-              <article key={`${action.kind}-${idx}`} className="card" style={{ padding: 12 }}>
+              <article key={`${action.kind}-${idx}`} className="card p-12 stack-8">
                 <div className="pill">{action.kind}</div>
-                <div style={{ marginTop: 8, fontWeight: 700 }}>{action.title}</div>
-                <p style={{ margin: "6px 0 10px", color: "var(--muted)" }}>{action.subtitle}</p>
+                <div className="fw-700">{action.title}</div>
+                <p className="m-0 text-muted">{action.subtitle}</p>
                 <a href={action.href}>Open</a>
               </article>
             ))}
           </div>
         ) : (
-          <p style={{ margin: 0 }}>No recommended actions yet.</p>
+          <EmptyState title="No recommended actions" body="No recommended actions yet." />
         )}
-      </section>
+      </PageSection>
 
-      <section className="grid grid-2">
-        <article className="card" style={{ display: "grid", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Live Events</h2>
+      <div className="grid grid-2">
+        <PageSection title="Live Events">
           {(d?.active_events || []).length ? (
-            <div style={{ display: "grid", gap: 8 }}>
+            <div className="stack-8">
               {(d?.active_events || []).slice(0, 3).map((event) => (
-                <div key={event.event_id} className="card" style={{ padding: 12 }}>
-                  <div style={{ fontWeight: 700 }}>{event.title}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 13 }}>
+                <div key={event.event_id} className="card p-12 stack-6">
+                  <div className="fw-700">{event.title}</div>
+                  <div className="muted-13">
                     Track {event.track} | Module {event.module || "Any"}
                   </div>
-                  <div style={{ marginTop: 6 }}>
+                  <div>
                     {event.already_submitted ? <span className="pill">Submitted</span> : <span className="pill">Open</span>}
                   </div>
                 </div>
@@ -159,60 +156,45 @@ export default function StudentHomeFeedPage() {
               <Link href="/events">Open all events</Link>
             </div>
           ) : (
-            <p style={{ margin: 0 }}>No active events right now.</p>
+            <EmptyState title="No active events" body="No active events right now." />
           )}
-        </article>
+        </PageSection>
 
-        <article className="card" style={{ display: "grid", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Your Pod</h2>
+        <PageSection title="Your Pod">
           {d?.pod ? (
-            <>
+            <div className="stack-8">
               <div>
                 <strong>{d.pod.pod_name}</strong>
               </div>
-              <div style={{ color: "var(--muted)", fontSize: 13 }}>
-                Rank #{d.pod.rank || "-"} | {d.pod.points || 0} points
-              </div>
-              <div style={{ display: "grid", gap: 4 }}>
+              <div className="muted-13">Rank #{d.pod.rank || "-"} | {d.pod.points || 0} points</div>
+              <div className="stack-4">
                 {(d.pod.members || []).slice(0, 5).map((m) => (
                   <div key={m.email}>{m.display_name || m.email}</div>
                 ))}
               </div>
               <Link href="/pods">Open pod page</Link>
-            </>
+            </div>
           ) : (
-            <p style={{ margin: 0 }}>You are not assigned to a pod yet.</p>
+            <EmptyState title="No pod assignment" body="You are not assigned to a pod yet." />
           )}
-        </article>
-      </section>
+        </PageSection>
+      </div>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Recent Reward Activity</h2>
+      <PageSection title="Recent Reward Activity">
         {(d?.rewards?.recent_points || []).length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>When</th>
-                  <th>Points</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(d?.rewards?.recent_points || []).slice(0, 8).map((row, idx) => (
-                  <tr key={`${row.ts}-${idx}`}>
-                    <td>{new Date(row.ts).toLocaleString()}</td>
-                    <td>{row.delta_points}</td>
-                    <td>{row.reason}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable headers={["When", "Points", "Reason"]}>
+            {(d?.rewards?.recent_points || []).slice(0, 8).map((row, idx) => (
+              <tr key={`${row.ts}-${idx}`}>
+                <td>{new Date(row.ts).toLocaleString()}</td>
+                <td>{row.delta_points}</td>
+                <td>{row.reason}</td>
+              </tr>
+            ))}
+          </DataTable>
         ) : (
-          <p style={{ margin: 0 }}>No recent reward entries yet.</p>
+          <EmptyState title="No reward entries" body="No recent reward entries yet." />
         )}
-      </section>
+      </PageSection>
     </div>
   );
 }

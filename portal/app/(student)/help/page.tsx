@@ -57,14 +57,14 @@ export default function HelpPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Help Center" subtitle="FAQ and support guidance" />
 
       <FetchPanel endpoint="/api/help" title="FAQ" />
 
-      <section className="card" style={{ display: "grid", gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Contact Support</h2>
-        <p style={{ margin: 0, color: "var(--muted)" }}>
+      <section className="card stack-12">
+        <h2 className="title-18">Contact Support</h2>
+        <p className="m-0 text-muted">
           If something is blocked, send a ticket and staff will review it.
         </p>
 
@@ -80,7 +80,7 @@ export default function HelpPage() {
           </div>
         ) : null}
 
-        <form onSubmit={onSubmit} className="grid" style={{ gap: 10 }}>
+        <form onSubmit={onSubmit} className="grid stack-10">
           <label>
             Category
             <select value={category} onChange={(e) => setCategory(e.target.value)} required>

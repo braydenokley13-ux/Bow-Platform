@@ -173,7 +173,7 @@ function ClassRecordCard({ meta, record }: ClassRecordCardProps) {
         <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
           {meta.title}
         </div>
-        <div style={{ color: "var(--muted)", fontSize: 12 }}>
+        <div className="muted-12">
           {meta.description}
         </div>
       </div>
@@ -306,7 +306,7 @@ function PersonalBestCard({ meta, best, classRecord }: PersonalBestCardProps) {
 
 function RecordSkeleton() {
   return (
-    <article className="card" style={{ display: "grid", gap: 10 }}>
+    <article className="card stack-10">
       <div className="skeleton sk-line" style={{ width: "30%" }} />
       <div className="skeleton sk-title" style={{ width: "70%" }} />
       <div className="skeleton sk-line" style={{ width: "50%" }} />
@@ -343,7 +343,7 @@ export default function RecordsPage() {
   const personalBests = payload?.data.personal_bests;
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid gap-20">
       <PageTitle
         title="Session Records Wall"
         subtitle="All-time class records and your personal bests across every category"
@@ -351,8 +351,7 @@ export default function RecordsPage() {
 
       {/* Refresh bar */}
       <section
-        className="card"
-        style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
+        className="card row-8-center-wrap"
       >
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh records"}
@@ -375,7 +374,7 @@ export default function RecordsPage() {
       ) : null}
 
       {/* ── Class Records ─────────────────────────────────────────────────── */}
-      <section className="card" style={{ display: "grid", gap: 14 }}>
+      <section className="card stack-14">
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
           <h2 style={{ margin: 0, fontSize: 20 }}>Class Records</h2>
           <span style={{ color: "var(--muted)", fontSize: 13 }}>
@@ -403,7 +402,7 @@ export default function RecordsPage() {
       </section>
 
       {/* ── Personal Bests ────────────────────────────────────────────────── */}
-      <section className="card" style={{ display: "grid", gap: 14 }}>
+      <section className="card stack-14">
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
           <h2 style={{ margin: 0, fontSize: 20 }}>Your Personal Bests</h2>
           <span style={{ color: "var(--muted)", fontSize: 13 }}>

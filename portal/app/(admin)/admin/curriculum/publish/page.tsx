@@ -48,11 +48,11 @@ export default function CurriculumPublishPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Publish Console" subtitle="Publish Draft curriculum atomically and rollback safely" />
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Publish</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">Publish</h2>
         <label>
           Publish Notes
           <input value={notes} onChange={(e) => setNotes(e.target.value)} />
@@ -64,8 +64,8 @@ export default function CurriculumPublishPage() {
         </div>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Rollback</h2>
+      <section className="card stack-10">
+        <h2 className="title-18">Rollback</h2>
         <label>
           Target Publish Batch ID (optional)
           <input

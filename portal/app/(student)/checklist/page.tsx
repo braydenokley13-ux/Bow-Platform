@@ -102,7 +102,7 @@ export default function ChecklistPage() {
   const allDone = completed === STEPS.length;
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Getting Started"
         subtitle="Complete these steps to get the most out of the BOW Sports Capital portal"
@@ -124,7 +124,7 @@ export default function ChecklistPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ display: "grid", gap: 4 }}>
+      <section className="card stack-4">
         <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
           <strong>{completed}/{STEPS.length} complete</strong>
           <div style={{ flex: 1, height: 6, background: "var(--bg2, #e5e7eb)", borderRadius: 3, overflow: "hidden" }}>
@@ -190,7 +190,7 @@ export default function ChecklistPage() {
 
       {busy ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>Loading...</p>
+          <p className="m-0 text-muted-60">Loading...</p>
         </section>
       ) : null}
     </div>

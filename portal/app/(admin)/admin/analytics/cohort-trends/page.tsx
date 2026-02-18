@@ -55,7 +55,7 @@ export default function AdminCohortTrendsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Cohort Trends" subtitle="Weekly trendline for XP, claim reliability, and rubric quality" />
 
       <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>

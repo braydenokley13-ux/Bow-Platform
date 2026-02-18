@@ -91,13 +91,13 @@ export default function StudentRoadmapPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Curriculum Roadmap"
         subtitle="Your path through BOW Sports Capital — programs, modules, and lessons"
       />
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh"}
         </button>
@@ -111,11 +111,11 @@ export default function StudentRoadmapPage() {
 
       {busy && programs.length === 0 ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>Loading roadmap...</p>
+          <p className="m-0 text-muted-60">Loading roadmap...</p>
         </section>
       ) : programs.length === 0 ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>No curriculum published yet.</p>
+          <p className="m-0 text-muted-60">No curriculum published yet.</p>
         </section>
       ) : null}
 
@@ -130,9 +130,9 @@ export default function StudentRoadmapPage() {
         );
 
         return (
-          <section key={program.program_id} className="card" style={{ display: "grid", gap: 12 }}>
+          <section key={program.program_id} className="card stack-12">
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-              <h2 style={{ margin: 0, fontSize: 18 }}>{program.title}</h2>
+              <h2 className="title-18">{program.title}</h2>
               <span className="pill">
                 {completedLessons}/{totalLessons} lessons — {pct(completedLessons, totalLessons)}%
               </span>

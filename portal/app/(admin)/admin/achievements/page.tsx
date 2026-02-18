@@ -107,13 +107,13 @@ export default function AdminAchievementsPage() {
   const activeSeasons = seasons.filter((s) => s.status === "ACTIVE");
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Achievements" subtitle="Trigger achievement checks and close seasons to award trophies" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
       {statusMsg ? <section className="card"><div className="banner">{statusMsg}</div></section> : null}
 
-      <section className="card" style={{ display: "grid", gap: 12 }}>
+      <section className="card stack-12">
         <h2 style={{ margin: 0, fontSize: 16 }}>🔥 Comeback Achievement</h2>
         <p style={{ margin: 0, opacity: 0.7, fontSize: 14 }}>
           Auto-awards the Comeback badge to students who were in the bottom third of the leaderboard and climbed to the top half within the past 7 days.
@@ -132,7 +132,7 @@ export default function AdminAchievementsPage() {
         </div>
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 12 }}>
+      <section className="card stack-12">
         <h2 style={{ margin: 0, fontSize: 16 }}>🏆 Close Season &amp; Award Trophies</h2>
         <p style={{ margin: 0, opacity: 0.7, fontSize: 14 }}>
           Closing a season archives the final top-3 standings permanently. Those students earn a trophy on their profiles and in their Trophy Case.
@@ -160,10 +160,10 @@ export default function AdminAchievementsPage() {
         ))}
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <h2 style={{ margin: 0, fontSize: 16 }}>Run History</h2>
-          <button className="secondary" style={{ marginLeft: "auto" }} onClick={() => void loadRuns()} disabled={busyRuns}>
+          <button className="secondary ml-auto" onClick={() => void loadRuns()} disabled={busyRuns}>
             {busyRuns ? "Loading..." : "Refresh"}
           </button>
         </div>

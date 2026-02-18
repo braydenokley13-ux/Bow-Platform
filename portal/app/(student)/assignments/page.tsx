@@ -29,9 +29,9 @@ export default function AssignmentsPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Assignments" subtitle="Track assignment tasks and completion" />
-      <form className="card" onSubmit={onComplete} style={{ display: "grid", gap: 10, maxWidth: 540 }}>
+      <form className="card stack-10 max-w-540" onSubmit={onComplete}>
         <label>
           Assignment ID
           <input value={assignmentId} onChange={(e) => setAssignmentId(e.target.value)} required />

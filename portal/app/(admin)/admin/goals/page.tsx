@@ -51,7 +51,7 @@ export default function AdminGoalsPage() {
   );
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Student Season Goals"
         subtitle="Goals set by each student for the current season"
@@ -78,15 +78,15 @@ export default function AdminGoalsPage() {
 
       {filtered.length === 0 && !busy ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>
+          <p className="m-0 text-muted-60">
             {query ? "No goals match your search." : "No students have set goals yet."}
           </p>
         </section>
       ) : null}
 
-      <div className="grid" style={{ gap: 10 }}>
+      <div className="grid stack-10">
         {filtered.map((g) => (
-          <article key={g.email} className="card" style={{ display: "grid", gap: 6 }}>
+          <article key={g.email} className="card stack-6">
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <strong>{g.display_name ?? g.email}</strong>
               {g.pod ? <span className="pill">{g.pod}</span> : null}

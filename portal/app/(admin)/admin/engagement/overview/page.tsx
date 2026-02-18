@@ -74,7 +74,7 @@ export default function AdminEngagementOverviewPage() {
   const d = payload?.data;
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Engagement Overview" subtitle="Live weekly engagement status and participation KPIs" />
 
       <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
@@ -98,27 +98,27 @@ export default function AdminEngagementOverviewPage() {
       <section className="grid grid-2">
         <article className="card">
           <div className="kicker">Active Season</div>
-          <h2 style={{ margin: "8px 0" }}>{d?.active_season?.title || "No active season"}</h2>
-          <p style={{ margin: 0, color: "var(--muted)" }}>{d?.active_season?.season_id || "-"}</p>
+          <h2 className="my-8">{d?.active_season?.title || "No active season"}</h2>
+          <p className="m-0 text-muted">{d?.active_season?.season_id || "-"}</p>
         </article>
         <article className="card">
           <div className="kicker">Window</div>
-          <h2 style={{ margin: "8px 0" }}>{d?.window_days || Number(days || "7")} days</h2>
+          <h2 className="my-8">{d?.window_days || Number(days || "7")} days</h2>
         </article>
       </section>
 
       <section className="grid grid-2">
-        <article className="card"><div className="kicker">Active Students</div><h2 style={{ margin: "8px 0" }}>{d?.totals.active_students ?? 0}</h2></article>
-        <article className="card"><div className="kicker">Claims</div><h2 style={{ margin: "8px 0" }}>{d?.totals.claims_submitted ?? 0}</h2></article>
-        <article className="card"><div className="kicker">Journals</div><h2 style={{ margin: "8px 0" }}>{d?.totals.journals_submitted ?? 0}</h2></article>
-        <article className="card"><div className="kicker">Event Participation</div><h2 style={{ margin: "8px 0" }}>{d?.totals.events_participated ?? 0}</h2></article>
-        <article className="card"><div className="kicker">Quest Completions</div><h2 style={{ margin: "8px 0" }}>{d?.totals.quests_completed ?? 0}</h2></article>
-        <article className="card"><div className="kicker">Kudos Sent</div><h2 style={{ margin: "8px 0" }}>{d?.totals.kudos_sent ?? 0}</h2></article>
+        <article className="card"><div className="kicker">Active Students</div><h2 className="my-8">{d?.totals.active_students ?? 0}</h2></article>
+        <article className="card"><div className="kicker">Claims</div><h2 className="my-8">{d?.totals.claims_submitted ?? 0}</h2></article>
+        <article className="card"><div className="kicker">Journals</div><h2 className="my-8">{d?.totals.journals_submitted ?? 0}</h2></article>
+        <article className="card"><div className="kicker">Event Participation</div><h2 className="my-8">{d?.totals.events_participated ?? 0}</h2></article>
+        <article className="card"><div className="kicker">Quest Completions</div><h2 className="my-8">{d?.totals.quests_completed ?? 0}</h2></article>
+        <article className="card"><div className="kicker">Kudos Sent</div><h2 className="my-8">{d?.totals.kudos_sent ?? 0}</h2></article>
       </section>
 
       <section className="grid grid-2">
-        <article className="card" style={{ display: "grid", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Active Events</h2>
+        <article className="card stack-8">
+          <h2 className="title-18">Active Events</h2>
           {(d?.active_events || []).length ? (
             <div className="table-wrap">
               <table>
@@ -141,12 +141,12 @@ export default function AdminEngagementOverviewPage() {
               </table>
             </div>
           ) : (
-            <p style={{ margin: 0 }}>No active events.</p>
+            <p className="m-0">No active events.</p>
           )}
         </article>
 
-        <article className="card" style={{ display: "grid", gap: 8 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>Top Individuals</h2>
+        <article className="card stack-8">
+          <h2 className="title-18">Top Individuals</h2>
           {(d?.top_individuals || []).length ? (
             <div className="table-wrap">
               <table>
@@ -163,7 +163,7 @@ export default function AdminEngagementOverviewPage() {
                       <td>#{row.rank}</td>
                       <td>
                         <div>{row.display_name || row.email}</div>
-                        <div style={{ color: "var(--muted)", fontSize: 12 }}>{row.email}</div>
+                        <div className="muted-12">{row.email}</div>
                       </td>
                       <td>{row.points}</td>
                     </tr>
@@ -172,7 +172,7 @@ export default function AdminEngagementOverviewPage() {
               </table>
             </div>
           ) : (
-            <p style={{ margin: 0 }}>No points yet.</p>
+            <p className="m-0">No points yet.</p>
           )}
         </article>
       </section>

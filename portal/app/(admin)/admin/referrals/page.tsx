@@ -67,14 +67,14 @@ export default function AdminReferralsPage() {
   const referrals = payload?.data.referrals ?? [];
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid gap-20">
       <PageTitle title="Referral Tracking" subtitle="View student referrals and award XP bonuses when friends enroll." />
 
       {error && <div className="banner banner-error"><strong>Error:</strong> {error}</div>}
 
       {/* Summary */}
       {payload?.data && (
-        <section className="card" style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+        <section className="card row-24-wrap">
           <div>
             <div className="kicker">Total Referrals</div>
             <div style={{ fontSize: 28, fontWeight: 800, color: "var(--brand)" }}>{referrals.length}</div>
@@ -87,20 +87,20 @@ export default function AdminReferralsPage() {
             <div className="kicker">Total XP Awarded</div>
             <div style={{ fontSize: 28, fontWeight: 800, color: "#1e4fb4" }}>{payload.data.total_xp_awarded.toLocaleString()}</div>
           </div>
-          <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto", alignSelf: "center" }}>
+          <button onClick={() => void load()} disabled={busy} className="secondary ml-auto" style={{ alignSelf: "center" }}>
             {busy ? "Loading…" : "Refresh"}
           </button>
         </section>
       )}
 
       {/* Referrals Table */}
-      <section className="card" style={{ display: "grid", gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>All Referrals</h2>
+      <section className="card stack-12">
+        <h2 className="title-18">All Referrals</h2>
         {referrals.length === 0 ? (
           <p style={{ color: "var(--muted)", margin: 0 }}>No referrals recorded yet.</p>
         ) : (
           <div className="table-wrap">
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+            <table className="table-inline">
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--border)" }}>
                   {["Referrer", "Referred Friend", "Status", "XP Awarded", "Date", "Action"].map((h) => (

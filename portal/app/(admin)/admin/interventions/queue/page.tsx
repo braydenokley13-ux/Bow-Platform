@@ -52,10 +52,10 @@ export default function AdminInterventionQueuePage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Intervention Queue" subtitle="Ranked student coaching priorities with recommended message templates" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh queue"}
         </button>
@@ -88,7 +88,7 @@ export default function AdminInterventionQueuePage() {
               <tr key={r.email}>
                 <td>
                   <div>{r.display_name}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{r.email}</div>
+                  <div className="muted-12">{r.email}</div>
                 </td>
                 <td>
                   <span className="pill">{r.risk_tier}</span>
@@ -101,7 +101,7 @@ export default function AdminInterventionQueuePage() {
                 <td>
                   {r.recommended_title || "-"}
                   {r.recommended_template_id ? (
-                    <div style={{ color: "var(--muted)", fontSize: 12 }}>{r.recommended_template_id}</div>
+                    <div className="muted-12">{r.recommended_template_id}</div>
                   ) : null}
                 </td>
                 <td style={{ maxWidth: 360, whiteSpace: "pre-wrap" }}>

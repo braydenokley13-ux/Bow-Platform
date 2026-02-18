@@ -100,7 +100,7 @@ export default function NotificationPreferencesPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title="Notification Preferences"
         subtitle="Choose which in-portal notifications you want to receive"
@@ -150,7 +150,7 @@ export default function NotificationPreferencesPage() {
         ))}
       </section>
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <section className="card row-8-center">
         <button onClick={() => void save()} disabled={saving || busy}>
           {saving ? "Saving..." : "Save Preferences"}
         </button>

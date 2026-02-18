@@ -74,7 +74,7 @@ export default function PodChatPage() {
   useEffect(() => { void load(); }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle
         title={podName ? `Pod Chat — ${podName}` : "Pod Chat"}
         subtitle="Private thread for your pod — coordinate, share notes, and strategize"
@@ -90,7 +90,7 @@ export default function PodChatPage() {
         </section>
       ) : null}
 
-      <section className="card" style={{ padding: 0 }}>
+      <section className="card p-0">
         {!busy && messages.length === 0 ? (
           <p style={{ margin: 16, opacity: 0.6 }}>
             No messages yet. Say hi to your pod!
@@ -143,7 +143,7 @@ export default function PodChatPage() {
         <div ref={bottomRef} />
       </section>
 
-      <section className="card" style={{ display: "grid", gap: 8 }}>
+      <section className="card stack-8">
         <textarea
           rows={2}
           value={draft}
@@ -158,7 +158,7 @@ export default function PodChatPage() {
             {sending ? "Sending..." : "Send"}
           </button>
           <span style={{ fontSize: 12, opacity: 0.4 }}>Ctrl+Enter to send</span>
-          <button className="secondary" onClick={() => void load()} disabled={busy} style={{ marginLeft: "auto" }}>
+          <button className="secondary ml-auto" onClick={() => void load()} disabled={busy}>
             Refresh
           </button>
         </div>

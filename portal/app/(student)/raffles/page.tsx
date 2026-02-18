@@ -32,13 +32,13 @@ export default function RafflesPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Raffles" subtitle="1 ticket per 100 XP. Manual ticket spend per entry." />
       <div className="grid grid-2">
         <FetchPanel endpoint="/api/raffles/active" title="Active raffle" />
         <FetchPanel endpoint="/api/raffles/me/balance" title="My ticket balance" />
       </div>
-      <form className="card" onSubmit={onEnter} style={{ display: "grid", gap: 10, maxWidth: 420 }}>
+      <form className="card stack-10 max-w-420" onSubmit={onEnter}>
         <label>
           Raffle ID
           <input value={raffleId} onChange={(e) => setRaffleId(e.target.value)} required />
@@ -58,7 +58,7 @@ export default function RafflesPage() {
       </form>
       {error ? <div className="banner banner-error">{error}</div> : null}
       {result ? (
-        <pre className="card" style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 13 }}>
+        <pre className="card pre-wrap-13">
           {JSON.stringify(result, null, 2)}
         </pre>
       ) : null}

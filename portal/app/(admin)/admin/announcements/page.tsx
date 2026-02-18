@@ -125,7 +125,7 @@ export default function AdminAnnouncementsPage() {
   useEffect(() => { void load(); }, []);
 
   return (
-    <div className="grid" style={{ gap: 20 }}>
+    <div className="grid gap-20">
       <PageTitle
         title="Portal Announcements"
         subtitle="Schedule banner messages that appear to all students at the top of every page."
@@ -134,8 +134,8 @@ export default function AdminAnnouncementsPage() {
       {error && <div className="banner banner-error"><strong>Error:</strong> {error}</div>}
 
       {/* Create / Edit Form */}
-      <section className="card" style={{ display: "grid", gap: 12 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>{form.announcement_id ? "Edit Announcement" : "New Announcement"}</h2>
+      <section className="card stack-12">
+        <h2 className="title-18">{form.announcement_id ? "Edit Announcement" : "New Announcement"}</h2>
         <div className="grid grid-2" style={{ gap: 10 }}>
           <label style={{ display: "grid", gap: 4, fontSize: 13, gridColumn: "span 2" }}>
             Title (optional short headline)
@@ -202,9 +202,9 @@ export default function AdminAnnouncementsPage() {
       </section>
 
       {/* Announcements List */}
-      <section className="card" style={{ display: "grid", gap: 12 }}>
+      <section className="card stack-12">
         <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 18 }}>All Announcements</h2>
+          <h2 className="title-18">All Announcements</h2>
           <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto", fontSize: 13, padding: "4px 10px" }}>
             {busy ? "Loading…" : "Refresh"}
           </button>

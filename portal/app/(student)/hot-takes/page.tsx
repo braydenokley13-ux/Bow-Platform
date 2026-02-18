@@ -99,12 +99,12 @@ export default function HotTakesPage() {
   useEffect(() => { void load(); }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Hot Takes" subtitle="Post a bold sports opinion — the class votes Agree or Disagree" />
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
 
-      <section className="card" style={{ display: "grid", gap: 10 }}>
+      <section className="card stack-10">
         <label>
           Your hot take <span style={{ opacity: 0.5, fontWeight: 400 }}>(max 280 chars)</span>
           <textarea
@@ -126,13 +126,13 @@ export default function HotTakesPage() {
 
       {!busy && takes.length === 0 ? (
         <section className="card">
-          <p style={{ margin: 0, opacity: 0.6 }}>No hot takes yet. Start the debate!</p>
+          <p className="m-0 text-muted-60">No hot takes yet. Start the debate!</p>
         </section>
       ) : null}
 
-      <div className="grid" style={{ gap: 10 }}>
+      <div className="grid stack-10">
         {takes.map((t) => (
-          <article key={t.take_id} className="card" style={{ display: "grid", gap: 10 }}>
+          <article key={t.take_id} className="card stack-10">
             <p style={{ margin: 0, fontSize: 16, fontWeight: 500 }}>{t.take}</p>
 
             <VoteBar agree={t.agree_count} disagree={t.disagree_count} />

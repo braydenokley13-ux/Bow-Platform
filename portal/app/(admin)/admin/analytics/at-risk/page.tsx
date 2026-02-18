@@ -65,7 +65,7 @@ export default function AdminAtRiskPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="At-Risk Segmentation" subtitle="Prioritize who needs intervention now" />
 
       <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 10 }}>
@@ -117,7 +117,7 @@ export default function AdminAtRiskPage() {
               <tr key={r.email}>
                 <td>
                   <div>{r.display_name}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 12 }}>{r.email}</div>
+                  <div className="muted-12">{r.email}</div>
                 </td>
                 <td>
                   <span className="pill">{r.risk_tier}</span>
@@ -128,7 +128,7 @@ export default function AdminAtRiskPage() {
                 <td>{(r.claim_fail_rate_7d * 100).toFixed(1)}%</td>
                 <td>{r.rubric_overall_avg.toFixed(2)}</td>
                 <td>{r.weakest_dimension || "-"}</td>
-                <td style={{ maxWidth: 320 }}>{(r.drivers || []).join(", ") || "-"}</td>
+                <td className="max-w-320">{(r.drivers || []).join(", ") || "-"}</td>
               </tr>
             ))}
           </tbody>

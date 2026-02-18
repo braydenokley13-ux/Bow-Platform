@@ -81,10 +81,10 @@ export default function AdminJournalReviewPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Journal Review Queue" subtitle="Instructor rubric scoring for submitted decision journals" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <section className="card row-8-center">
         <button onClick={() => void load()} disabled={busy}>
           {busy ? "Refreshing..." : "Refresh Queue"}
         </button>
@@ -92,7 +92,7 @@ export default function AdminJournalReviewPage() {
       </section>
 
       <form className="card" onSubmit={submitScore} style={{ display: "grid", gap: 10 }}>
-        <h2 style={{ margin: 0, fontSize: 18 }}>Score Selected Entry</h2>
+        <h2 className="title-18">Score Selected Entry</h2>
         <label>
           Entry ID
           <input value={entryId} onChange={(e) => setEntryId(e.target.value)} placeholder="Click a queue row" />

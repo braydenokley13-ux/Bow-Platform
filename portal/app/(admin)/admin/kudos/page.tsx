@@ -59,16 +59,16 @@ export default function AdminKudosPage() {
   useEffect(() => { void load(); }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Kudos Management" subtitle="Pin standout shoutouts to feature them on the Kudos Wall" />
 
-      <section className="card" style={{ display: "flex", gap: 8 }}>
+      <section className="card row-8">
         <button onClick={() => void load()} disabled={busy}>{busy ? "Loading..." : "Refresh"}</button>
       </section>
 
       {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
 
-      <section className="card" style={{ padding: 0 }}>
+      <section className="card p-0">
         <div className="table-wrap">
           <table>
             <thead>

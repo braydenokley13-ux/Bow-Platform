@@ -52,10 +52,10 @@ export default function AdminContentValidationPage() {
   }, []);
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid gap-14">
       <PageTitle title="Content Validation" subtitle="Checks published curriculum integrity before student impact" />
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <section className="card row-8-center-wrap">
         <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <input
             type="checkbox"
@@ -111,7 +111,7 @@ export default function AdminContentValidationPage() {
             </tbody>
           </table>
         ) : (
-          <p style={{ margin: 0 }}>No validation issues found.</p>
+          <p className="m-0">No validation issues found.</p>
         )}
       </section>
     </div>
