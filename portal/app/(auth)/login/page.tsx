@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PageTitle } from "@/components/page-title";
 import { getFirebaseAuth } from "@/lib/firebase-client";
@@ -38,6 +38,11 @@ function defaultPathForRole(role: string) {
   return "/home";
 }
 
+function formatSessionFailureMessage(err: unknown) {
+  const detail = err instanceof Error ? err.message : "Unknown session error";
+  return `Signed in, but the server could not verify your portal access (${detail}). Check Firebase Admin and Apps Script env vars in Vercel, then sign in again.`;
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,16 +63,17 @@ export default function LoginPage() {
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const authClient = auth;
+    const unsubscribe = onAuthStateChanged(authClient, (user) => {
       if (!user) {
         setCheckingAuth(false);
         return;
       }
 
       setCheckingAuth(true);
+      setMessage("");
 
       async function openPortal() {
-        let destination = nextPath ?? "/home";
         try {
           const session = await apiFetch<SessionPayload>("/api/me/session");
           const status = String(session?.data?.status || "ACTIVE").toUpperCase();
@@ -76,13 +82,18 @@ export default function LoginPage() {
             setCheckingAuth(false);
             return;
           }
-          destination = nextPath ?? defaultPathForRole(session?.data?.role || "STUDENT");
-        } catch {
-          // If session metadata fetch fails, still move the user into the app shell.
-          destination = nextPath ?? "/home";
+          const destination = nextPath ?? defaultPathForRole(session?.data?.role || "STUDENT");
+          router.replace(destination as never);
+          return;
+        } catch (err) {
+          try {
+            await signOut(authClient);
+          } catch {
+            // ignore signout failures; user can still retry manually
+          }
+          setMessage(formatSessionFailureMessage(err));
+          setCheckingAuth(false);
         }
-
-        router.replace(destination as never);
       }
 
       void openPortal();
@@ -101,7 +112,7 @@ export default function LoginPage() {
         throw new Error("Firebase client config missing. Add NEXT_PUBLIC_FIREBASE_* environment variables.");
       }
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      setMessage("Signed in. Opening portal...");
+      setMessage("Signed in. Verifying access...");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -115,6 +126,9 @@ export default function LoginPage() {
 
       {reason === "session-check" ? (
         <div className="banner banner-warn">Your session expired. Please sign in again.</div>
+      ) : null}
+      {reason === "auth-timeout" ? (
+        <div className="banner banner-warn">Auth check timed out. Please sign in again.</div>
       ) : null}
 
       <form className="card auth-form form-stack" onSubmit={onSubmit}>

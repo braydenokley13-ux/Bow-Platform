@@ -49,6 +49,7 @@ export function SessionGuard({
   const pathname = usePathname();
 
   const [authReady, setAuthReady] = useState(false);
+  const [authTimedOut, setAuthTimedOut] = useState(false);
   const [hasFirebaseUser, setHasFirebaseUser] = useState(false);
   const [ready, setReady] = useState(false);
   const [guardError, setGuardError] = useState<string>("");
@@ -62,6 +63,7 @@ export function SessionGuard({
     }
 
     return onAuthStateChanged(auth, (user) => {
+      setAuthTimedOut(false);
       setHasFirebaseUser(Boolean(user));
       if (!user) {
         clearCachedSession();
@@ -71,13 +73,24 @@ export function SessionGuard({
   }, []);
 
   useEffect(() => {
+    if (authReady) return;
+    const timer = setTimeout(() => {
+      setAuthTimedOut(true);
+      setAuthReady(true);
+    }, 7000);
+
+    return () => clearTimeout(timer);
+  }, [authReady]);
+
+  useEffect(() => {
     if (!authReady) return;
     setReady(false);
     setGuardError("");
 
     const devMode = Boolean(process.env.NEXT_PUBLIC_DEV_ACTOR_EMAIL);
     if (!hasFirebaseUser && !devMode) {
-      router.replace(`/login?next=${encodeURIComponent(pathname || "/dashboard")}`);
+      const reason = authTimedOut ? "&reason=auth-timeout" : "";
+      router.replace(`/login?next=${encodeURIComponent(pathname || "/dashboard")}${reason}`);
       return;
     }
 
@@ -130,7 +143,7 @@ export function SessionGuard({
     return () => {
       cancelled = true;
     };
-  }, [authReady, hasFirebaseUser, pathname, requireAdmin, router]);
+  }, [authReady, authTimedOut, hasFirebaseUser, pathname, requireAdmin, router]);
 
   if (guardError && !ready) {
     return (

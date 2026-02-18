@@ -38,7 +38,15 @@ export async function getActorFromRequest(): Promise<PortalActor | null> {
   const idToken = authHeader.slice("Bearer ".length).trim();
   if (!idToken) return null;
 
-  const decoded = await adminAuth().verifyIdToken(idToken);
+  let decoded: Awaited<ReturnType<ReturnType<typeof adminAuth>["verifyIdToken"]>> | null = null;
+  try {
+    decoded = await adminAuth().verifyIdToken(idToken);
+  } catch (err) {
+    console.error("Auth token verification failed:", err);
+    return null;
+  }
+  if (!decoded) return null;
+
   const role = normalizeRole((decoded.role as string | undefined) || "STUDENT");
 
   return {
