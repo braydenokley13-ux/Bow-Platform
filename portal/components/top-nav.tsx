@@ -23,7 +23,10 @@ const studentLinks = [
   ["Notifications", "/notifications"],
   ["Help", "/help"],
   ["History", "/history"],
-  ["Status", "/status"]
+  ["Status", "/status"],
+  ["Records", "/records"],
+  ["Rewards", "/rewards"],
+  ["Refer", "/refer"],
 ] as const;
 
 const adminLinks = [
@@ -60,7 +63,12 @@ const adminLinks = [
   ["Chat", "/admin/chat"],
   ["Raffles", "/admin/raffles"],
   ["Audit", "/admin/audit-log"],
-  ["Runbook", "/admin/runbook"]
+  ["Runbook", "/admin/runbook"],
+  ["Rewards", "/admin/rewards"],
+  ["Referrals", "/admin/referrals"],
+  ["Spotlight", "/admin/spotlight"],
+  ["Notes", "/admin/notes"],
+  ["Announcements", "/admin/announcements"],
 ] as const;
 
 export function TopNav() {

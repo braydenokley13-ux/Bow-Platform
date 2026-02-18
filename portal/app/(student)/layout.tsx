@@ -1,5 +1,11 @@
 import { SessionGuard } from "@/components/session-guard";
+import { AnnouncementBanner } from "@/components/announcement-banner";
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  return <SessionGuard>{children}</SessionGuard>;
+  return (
+    <SessionGuard>
+      <AnnouncementBanner />
+      {children}
+    </SessionGuard>
+  );
 }
