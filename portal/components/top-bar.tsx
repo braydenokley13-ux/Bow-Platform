@@ -20,6 +20,8 @@ const DarkModeToggle = dynamic(
 export function TopBar(props: {
   title: string;
   subtitle?: string;
+  sidebarId: string;
+  sidebarOpen: boolean;
   onOpenSidebar: () => void;
   onOpenPalette: () => void;
 }) {
@@ -31,6 +33,8 @@ export function TopBar(props: {
           className="icon-button mobile-only"
           onClick={props.onOpenSidebar}
           aria-label="Open navigation"
+          aria-controls={props.sidebarId}
+          aria-expanded={props.sidebarOpen}
         >
           ☰
         </button>
@@ -42,7 +46,13 @@ export function TopBar(props: {
         </div>
 
         <div className="topbar-actions">
-          <button type="button" className="secondary" onClick={props.onOpenPalette}>
+          <button
+            type="button"
+            className="secondary"
+            onClick={props.onOpenPalette}
+            aria-label="Open quick search (Command or Control plus K)"
+            aria-keyshortcuts="Meta+K,Control+K"
+          >
             Search (Cmd/Ctrl+K)
           </button>
           <DarkModeToggle />

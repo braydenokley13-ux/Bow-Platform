@@ -81,7 +81,6 @@ interface CategoryMeta {
   icon: string;
   title: string;
   description: string;
-  accentColor: string;
 }
 
 const CATEGORIES: CategoryMeta[] = [
@@ -90,30 +89,33 @@ const CATEGORIES: CategoryMeta[] = [
     icon: "⚡",
     title: "Highest Single-Week XP",
     description: "Most XP earned in any one calendar week",
-    accentColor: "#1e4fb4",
   },
   {
     key: "longest_checkin_streak",
     icon: "🔥",
     title: "Longest Check-In Streak",
     description: "Most consecutive days with a daily check-in",
-    accentColor: "#c45c00",
   },
   {
     key: "most_shoutouts",
     icon: "📣",
     title: "Most Shoutouts Received",
     description: "All-time kudos received from instructors and peers",
-    accentColor: "#0d7a4f",
   },
   {
     key: "fastest_submission_hours",
     icon: "🏎️",
     title: "Fastest Assignment Submission",
     description: "Shortest time between assignment opening and submission",
-    accentColor: "#7b3fa0",
   },
 ];
+
+const RECORD_ACCENT_CLASS: Record<RecordKey, string> = {
+  highest_weekly_xp: "records-accent-blue",
+  longest_checkin_streak: "records-accent-orange",
+  most_shoutouts: "records-accent-green",
+  fastest_submission_hours: "records-accent-purple",
+};
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -126,86 +128,45 @@ function ClassRecordCard({ meta, record }: ClassRecordCardProps) {
   const hasData = record && record.value != null;
   return (
     <article
-      className="card"
-      style={{
-        display: "grid",
-        gap: 10,
-        borderTop: `3px solid ${meta.accentColor}`,
-        position: "relative",
-        overflow: "hidden",
-      }}
+      className={`card records-card ${RECORD_ACCENT_CLASS[meta.key]}`}
     >
       {/* Decorative icon watermark */}
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: 8,
-          right: 12,
-          fontSize: 40,
-          opacity: 0.08,
-          lineHeight: 1,
-          userSelect: "none",
-        }}
-      >
+      <span aria-hidden className="records-watermark">
         {meta.icon}
       </span>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          style={{
-            fontSize: 22,
-            lineHeight: 1,
-            background: "var(--surface-soft)",
-            borderRadius: 8,
-            padding: "4px 6px",
-            border: "1px solid var(--border)",
-          }}
-        >
+      <div className="row-8-center">
+        <span className="records-icon-chip records-icon-chip-lg">
           {meta.icon}
         </span>
-        <div className="kicker" style={{ color: meta.accentColor }}>
+        <div className="kicker records-accent-text">
           Class Record
         </div>
       </div>
 
       <div>
-        <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 2 }}>
-          {meta.title}
-        </div>
-        <div className="muted-12">
-          {meta.description}
-        </div>
+        <div className="records-title">{meta.title}</div>
+        <div className="muted-12">{meta.description}</div>
       </div>
 
       {hasData ? (
         <>
-          <div
-            style={{
-              fontSize: 28,
-              fontWeight: 800,
-              color: meta.accentColor,
-              letterSpacing: "-0.5px",
-              lineHeight: 1.1,
-            }}
-          >
+          <div className="records-value records-accent-text">
             {formatValue(meta.key, record.value)}
           </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-            <span className="pill" style={{ borderColor: meta.accentColor + "44" }}>
+          <div className="row-8-center-wrap">
+            <span className="pill records-accent-pill">
               {record.holder}
             </span>
             {record.achieved_at ? (
-              <span
-                style={{ fontSize: 12, color: "var(--muted)" }}
-              >
+              <span className="muted-12">
                 {formatDate(record.achieved_at)}
               </span>
             ) : null}
           </div>
         </>
       ) : (
-        <div style={{ color: "var(--muted)", fontSize: 14 }}>No record set yet</div>
+        <div className="text-muted">No record set yet</div>
       )}
     </article>
   );
@@ -230,47 +191,16 @@ function PersonalBestCard({ meta, best, classRecord }: PersonalBestCardProps) {
 
   return (
     <article
-      className="card"
-      style={{
-        display: "grid",
-        gap: 10,
-        background: isClassRecord
-          ? "linear-gradient(135deg, var(--surface) 60%, #fffbea)"
-          : "var(--surface)",
-        position: "relative",
-        overflow: "hidden",
-      }}
+      className={`card records-card ${RECORD_ACCENT_CLASS[meta.key]}${isClassRecord ? " records-best-highlight" : ""}`}
     >
       {isClassRecord ? (
-        <span
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 12,
-            fontSize: 11,
-            fontWeight: 700,
-            background: "#f5c400",
-            color: "#6b4c00",
-            borderRadius: 6,
-            padding: "2px 7px",
-            letterSpacing: "0.04em",
-          }}
-        >
+        <span className="records-class-tag">
           CLASS RECORD
         </span>
       ) : null}
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span
-          style={{
-            fontSize: 20,
-            lineHeight: 1,
-            background: "var(--surface-soft)",
-            borderRadius: 8,
-            padding: "4px 6px",
-            border: "1px solid var(--border)",
-          }}
-        >
+      <div className="row-8-center">
+        <span className="records-icon-chip">
           {meta.icon}
         </span>
         <div className="kicker">{meta.title}</div>
@@ -278,25 +208,17 @@ function PersonalBestCard({ meta, best, classRecord }: PersonalBestCardProps) {
 
       {hasData ? (
         <>
-          <div
-            style={{
-              fontSize: 26,
-              fontWeight: 800,
-              color: isClassRecord ? "#b58a00" : "var(--text)",
-              letterSpacing: "-0.5px",
-              lineHeight: 1.1,
-            }}
-          >
+          <div className={`records-value-lg${isClassRecord ? " records-value-gold" : ""}`}>
             {formatValue(meta.key, best.value)}
           </div>
           {best.achieved_at ? (
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            <div className="muted-12">
               {formatDate(best.achieved_at)}
             </div>
           ) : null}
         </>
       ) : (
-        <div style={{ color: "var(--muted)", fontSize: 14 }}>Nothing recorded yet</div>
+        <div className="text-muted">Nothing recorded yet</div>
       )}
     </article>
   );
@@ -307,10 +229,10 @@ function PersonalBestCard({ meta, best, classRecord }: PersonalBestCardProps) {
 function RecordSkeleton() {
   return (
     <article className="card stack-10">
-      <div className="skeleton sk-line" style={{ width: "30%" }} />
-      <div className="skeleton sk-title" style={{ width: "70%" }} />
-      <div className="skeleton sk-line" style={{ width: "50%" }} />
-      <div className="skeleton sk-line" style={{ width: "40%" }} />
+      <div className="skeleton sk-line w-30" />
+      <div className="skeleton sk-title w-70" />
+      <div className="skeleton sk-line w-50" />
+      <div className="skeleton sk-line w-40" />
     </article>
   );
 }
@@ -365,7 +287,7 @@ export default function RecordsPage() {
           <div className="banner banner-error">
             <strong>Could not load records:</strong> {error}
           </div>
-          <div style={{ marginTop: 10 }}>
+          <div className="mt-10">
             <button onClick={() => void load()} className="secondary">
               Retry
             </button>
@@ -375,21 +297,21 @@ export default function RecordsPage() {
 
       {/* ── Class Records ─────────────────────────────────────────────────── */}
       <section className="card stack-14">
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 20 }}>Class Records</h2>
-          <span style={{ color: "var(--muted)", fontSize: 13 }}>
+        <div className="row-10-baseline">
+          <h2 className="m-0 title-20">Class Records</h2>
+          <span className="muted-13">
             All-time highs across the entire cohort
           </span>
         </div>
 
         {busy && !payload ? (
-          <div className="grid grid-2" style={{ gap: 12 }}>
+          <div className="grid grid-2 gap-12">
             {CATEGORIES.map((c) => (
               <RecordSkeleton key={c.key} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-2" style={{ gap: 12 }}>
+          <div className="grid grid-2 gap-12">
             {CATEGORIES.map((meta) => (
               <ClassRecordCard
                 key={meta.key}
@@ -403,21 +325,21 @@ export default function RecordsPage() {
 
       {/* ── Personal Bests ────────────────────────────────────────────────── */}
       <section className="card stack-14">
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-          <h2 style={{ margin: 0, fontSize: 20 }}>Your Personal Bests</h2>
-          <span style={{ color: "var(--muted)", fontSize: 13 }}>
+        <div className="row-10-baseline">
+          <h2 className="m-0 title-20">Your Personal Bests</h2>
+          <span className="muted-13">
             Your highest scores in each category
           </span>
         </div>
 
         {busy && !payload ? (
-          <div className="grid grid-2" style={{ gap: 12 }}>
+          <div className="grid grid-2 gap-12">
             {CATEGORIES.map((c) => (
               <RecordSkeleton key={c.key} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-2" style={{ gap: 12 }}>
+          <div className="grid grid-2 gap-12">
             {CATEGORIES.map((meta) => (
               <PersonalBestCard
                 key={meta.key}
@@ -431,17 +353,9 @@ export default function RecordsPage() {
 
         {/* Footnote */}
         {payload ? (
-          <p
-            style={{
-              margin: 0,
-              fontSize: 12,
-              color: "var(--muted)",
-              borderTop: "1px solid var(--border)",
-              paddingTop: 10,
-            }}
-          >
+          <p className="records-footnote">
             Records marked{" "}
-            <strong style={{ color: "#b58a00" }}>CLASS RECORD</strong> mean your
+            <strong className="records-value-gold">CLASS RECORD</strong> mean your
             personal best ties or beats the cohort record.
           </p>
         ) : null}

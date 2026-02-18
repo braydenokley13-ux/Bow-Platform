@@ -113,30 +113,30 @@ export default function AdminRewardsPage() {
       {/* ── Create / Edit Form ─────────────────────────────────────────── */}
       <section className="card stack-12">
         <h2 className="title-18">{form.reward_id ? "Edit Reward" : "Add New Reward"}</h2>
-        <div className="grid grid-2" style={{ gap: 10 }}>
-          <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+        <div className="grid grid-2 gap-10">
+          <label className="field field-sm">
             Icon (emoji)
-            <input value={form.icon} onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))} maxLength={4} style={{ width: 70 }} />
+            <input className="input-w-70" value={form.icon} onChange={(e) => setForm((f) => ({ ...f, icon: e.target.value }))} maxLength={4} />
           </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+          <label className="field field-sm">
             Category
             <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
               {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 13, gridColumn: "span 2" }}>
+          <label className="field field-sm grid-span-2">
             Title
             <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Custom Zoom Background" />
           </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 13, gridColumn: "span 2" }}>
+          <label className="field field-sm grid-span-2">
             Description
-            <textarea value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder="Short description of this reward…" style={{ resize: "vertical" }} />
+            <textarea className="input-resize" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} rows={2} placeholder="Short description of this reward…" />
           </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+          <label className="field field-sm">
             XP Cost
             <input type="number" min={0} step={50} value={form.xp_cost} onChange={(e) => setForm((f) => ({ ...f, xp_cost: Number(e.target.value) }))} />
           </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+          <label className="field field-sm">
             Available to students?
             <select value={form.available ? "yes" : "no"} onChange={(e) => setForm((f) => ({ ...f, available: e.target.value === "yes" }))}>
               <option value="yes">Yes</option>
@@ -151,16 +151,16 @@ export default function AdminRewardsPage() {
           {form.reward_id && (
             <button className="secondary" onClick={() => setForm(EMPTY_FORM)}>Cancel Edit</button>
           )}
-          {saveMsg && <span style={{ fontSize: 13, color: saveMsg === "Saved!" ? "#0d7a4f" : "var(--danger)" }}>{saveMsg}</span>}
+          {saveMsg && <span className={`fs-13 ${saveMsg === "Saved!" ? "text-success" : "text-danger"}`}>{saveMsg}</span>}
         </div>
       </section>
 
       {/* ── Pending Redemptions ────────────────────────────────────────── */}
       <section className="card stack-12">
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <div className="row-10-baseline">
           <h2 className="title-18">Pending Redemptions</h2>
           {pending.length > 0 && (
-            <span className="pill" style={{ background: "#fef3c7", borderColor: "#d97706", color: "#92400e" }}>
+            <span className="pill pill-status-pending">
               {pending.length} to fulfill
             </span>
           )}
@@ -171,23 +171,23 @@ export default function AdminRewardsPage() {
           <div className="table-wrap">
             <table className="table-inline">
               <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                <tr>
                   {["Student", "Reward", "XP Cost", "Requested", "Action"].map((h) => (
-                    <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: "var(--muted)", fontWeight: 600 }}>{h}</th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {pending.map((r) => (
-                  <tr key={r.redemption_id} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={{ padding: "8px 8px" }}>{r.student_name} <span style={{ color: "var(--muted)", fontSize: 12 }}>({r.student_email})</span></td>
-                    <td style={{ padding: "8px 8px", fontWeight: 600 }}>{r.reward_title}</td>
-                    <td style={{ padding: "8px 8px" }}>{r.xp_cost.toLocaleString()} XP</td>
-                    <td style={{ padding: "8px 8px", color: "var(--muted)", fontSize: 13 }}>
+                  <tr key={r.redemption_id}>
+                    <td>{r.student_name} <span className="muted-12">({r.student_email})</span></td>
+                    <td className="fw-700">{r.reward_title}</td>
+                    <td>{r.xp_cost.toLocaleString()} XP</td>
+                    <td className="muted-13">
                       {new Date(r.redeemed_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
                     </td>
-                    <td style={{ padding: "8px 8px" }}>
-                      <button onClick={() => void fulfill(r.redemption_id)} disabled={fulfilling === r.redemption_id} style={{ fontSize: 13, padding: "4px 10px" }}>
+                    <td>
+                      <button className="btn-sm" onClick={() => void fulfill(r.redemption_id)} disabled={fulfilling === r.redemption_id}>
                         {fulfilling === r.redemption_id ? "…" : "Mark Fulfilled"}
                       </button>
                     </td>
@@ -201,9 +201,9 @@ export default function AdminRewardsPage() {
 
       {/* ── Catalog ────────────────────────────────────────────────────── */}
       <section className="card stack-12">
-        <div style={{ display: "flex", gap: 10, alignItems: "baseline" }}>
+        <div className="row-10-baseline">
           <h2 className="title-18">Current Catalog</h2>
-          <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto", fontSize: 13, padding: "4px 10px" }}>
+          <button onClick={() => void load()} disabled={busy} className="secondary ml-auto btn-sm">
             {busy ? "Loading…" : "Refresh"}
           </button>
         </div>
@@ -213,26 +213,26 @@ export default function AdminRewardsPage() {
           <div className="table-wrap">
             <table className="table-inline">
               <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                <tr>
                   {["Icon", "Title", "Category", "XP Cost", "Status", "Edit"].map((h) => (
-                    <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: "var(--muted)", fontWeight: 600 }}>{h}</th>
+                    <th key={h}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {catalog.map((item) => (
-                  <tr key={item.reward_id} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={{ padding: "8px 8px", fontSize: 20 }}>{item.icon}</td>
-                    <td style={{ padding: "8px 8px", fontWeight: 600 }}>{item.title}</td>
-                    <td style={{ padding: "8px 8px" }}><span className="pill">{item.category}</span></td>
-                    <td style={{ padding: "8px 8px" }}>{item.xp_cost.toLocaleString()} XP</td>
-                    <td style={{ padding: "8px 8px" }}>
-                      <span className="pill" style={{ color: item.available ? "#0d7a4f" : "var(--muted)", borderColor: item.available ? "#0d7a4f55" : "var(--border)" }}>
+                  <tr key={item.reward_id}>
+                    <td className="fs-20">{item.icon}</td>
+                    <td className="fw-700">{item.title}</td>
+                    <td><span className="pill">{item.category}</span></td>
+                    <td>{item.xp_cost.toLocaleString()} XP</td>
+                    <td>
+                      <span className={`pill ${item.available ? "pill-status-positive" : "pill-status-muted"}`}>
                         {item.available ? "visible" : "hidden"}
                       </span>
                     </td>
-                    <td style={{ padding: "8px 8px" }}>
-                      <button onClick={() => editReward(item)} className="secondary" style={{ fontSize: 12, padding: "3px 8px" }}>Edit</button>
+                    <td>
+                      <button onClick={() => editReward(item)} className="secondary btn-xs">Edit</button>
                     </td>
                   </tr>
                 ))}

@@ -24,10 +24,10 @@ interface ReferralPayload {
   };
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: "#c45c00",
-  enrolled: "#0d7a4f",
-  rewarded: "#1e4fb4",
+const STATUS_CLASS: Record<string, string> = {
+  pending: "pill-status-pending",
+  enrolled: "pill-status-positive",
+  rewarded: "pill-status-blue"
 };
 
 export default function ReferPage() {
@@ -56,12 +56,13 @@ export default function ReferPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
-      // fallback: show in prompt
       prompt("Copy your referral link:", payload.data.referral_url);
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   const data = payload?.data;
 
@@ -74,109 +75,85 @@ export default function ReferPage() {
 
       {error && <div className="banner banner-error"><strong>Error:</strong> {error}</div>}
 
-      {/* Referral Link Card */}
       <section className="card stack-14">
         <div>
           <div className="kicker">Your Personal Referral Link</div>
-          <p style={{ margin: "4px 0 0", color: "var(--muted)", fontSize: 14 }}>
-            Share this link with friends who might join a future BOW cohort.
-            When they enroll, you automatically earn{" "}
-            <strong style={{ color: "var(--brand)" }}>
+          <p className="refer-intro-copy">
+            Share this link with friends who might join a future BOW cohort. When they enroll, you automatically earn{" "}
+            <strong className="text-brand">
               {data ? `${data.xp_bonus_on_enroll.toLocaleString()} XP` : "a large XP bonus"}
             </strong>.
           </p>
         </div>
 
         {data ? (
-          <div style={{ display: "grid", gap: 8 }}>
-            <div
-              style={{
-                background: "var(--surface-soft)",
-                border: "1.5px solid var(--border)",
-                borderRadius: 8,
-                padding: "10px 14px",
-                fontFamily: "monospace",
-                fontSize: 14,
-                wordBreak: "break-all",
-                color: "var(--text)",
-              }}
-            >
-              {data.referral_url}
-            </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button onClick={() => void copyLink()}>
-                {copied ? "✓ Copied!" : "Copy Link"}
-              </button>
-              <span className="pill" style={{ fontSize: 12, color: "var(--muted)" }}>
+          <div className="stack-8">
+            <div className="refer-link-box">{data.referral_url}</div>
+            <div className="row-8-wrap">
+              <button onClick={() => void copyLink()}>{copied ? "✓ Copied!" : "Copy Link"}</button>
+              <span className="pill muted-12">
                 Code: <strong>{data.referral_code}</strong>
               </span>
             </div>
           </div>
         ) : busy ? (
-          <div className="skeleton sk-line" style={{ width: "70%" }} />
+          <div className="skeleton sk-line w-70" />
         ) : null}
       </section>
 
-      {/* Stats */}
       {data && (
         <section className="card row-20-wrap">
-          <div style={{ textAlign: "center" }}>
+          <div className="text-center">
             <div className="kicker">Total Referrals</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: "var(--brand)" }}>
-              {data.referrals.length}
-            </div>
+            <div className="refer-stat-value">{data.referrals.length}</div>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div className="text-center">
             <div className="kicker">Enrolled</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: "#0d7a4f" }}>
+            <div className="refer-stat-value refer-stat-green">
               {data.referrals.filter((r) => r.status === "enrolled" || r.status === "rewarded").length}
             </div>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div className="text-center">
             <div className="kicker">XP Earned from Referrals</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: "#1e4fb4" }}>
-              {data.total_xp_earned.toLocaleString()}
-            </div>
+            <div className="refer-stat-value refer-stat-blue">{data.total_xp_earned.toLocaleString()}</div>
           </div>
         </section>
       )}
 
-      {/* Referral History */}
       <section className="card stack-12">
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <div className="row-10-baseline">
           <h2 className="title-18">Your Referrals</h2>
-          <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto", fontSize: 13, padding: "4px 10px" }}>
+          <button onClick={() => void load()} disabled={busy} className="secondary ml-auto btn-sm">
             {busy ? "Loading…" : "Refresh"}
           </button>
         </div>
 
         {!data || data.referrals.length === 0 ? (
-          <p className="m-0 text-muted">
-            No referrals yet. Share your link to get started!
-          </p>
+          <p className="m-0 text-muted">No referrals yet. Share your link to get started!</p>
         ) : (
           <div className="table-wrap">
             <table className="table-inline">
               <thead>
-                <tr style={{ borderBottom: "2px solid var(--border)" }}>
-                  {["Friend", "Status", "XP Earned", "Date"].map((h) => (
-                    <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: "var(--muted)", fontWeight: 600 }}>{h}</th>
-                  ))}
+                <tr>
+                  {[
+                    "Friend",
+                    "Status",
+                    "XP Earned",
+                    "Date"
+                  ].map((h) => <th key={h}>{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {data.referrals.map((r) => (
-                  <tr key={r.referral_id} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={{ padding: "8px 8px", fontWeight: 600 }}>{r.referred_name || r.referred_email}</td>
-                    <td style={{ padding: "8px 8px" }}>
-                      <span className="pill" style={{ color: STATUS_COLOR[r.status] ?? "var(--muted)", borderColor: (STATUS_COLOR[r.status] ?? "var(--border)") + "55" }}>
-                        {r.status}
-                      </span>
+                  <tr key={r.referral_id}>
+                    <td className="fw-700">{r.referred_name || r.referred_email}</td>
+                    <td>
+                      <span className={`pill ${STATUS_CLASS[r.status] ?? "pill-status-muted"}`}>{r.status}</span>
                     </td>
-                    <td style={{ padding: "8px 8px", fontWeight: r.xp_awarded > 0 ? 700 : 400, color: r.xp_awarded > 0 ? "#1e4fb4" : "var(--muted)" }}>
+                    <td className={r.xp_awarded > 0 ? "refer-xp-positive" : "refer-xp-muted"}>
                       {r.xp_awarded > 0 ? `+${r.xp_awarded.toLocaleString()} XP` : "—"}
                     </td>
-                    <td style={{ padding: "8px 8px", color: "var(--muted)", fontSize: 13 }}>
+                    <td className="muted-13">
                       {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
                     </td>
                   </tr>
@@ -187,10 +164,9 @@ export default function ReferPage() {
         )}
       </section>
 
-      {/* How it works */}
       <section className="card stack-10">
         <h2 className="title-16">How It Works</h2>
-        <ol style={{ margin: 0, paddingLeft: 20, color: "var(--muted)", fontSize: 14, lineHeight: 1.7 }}>
+        <ol className="refer-steps-list">
           <li>Copy your unique referral link above.</li>
           <li>Share it with friends interested in BOW Sports Capital programs.</li>
           <li>When your friend enrolls in a future cohort using your link, you earn <strong>{data ? `${data.xp_bonus_on_enroll.toLocaleString()} XP` : "a bonus"}</strong> automatically.</li>

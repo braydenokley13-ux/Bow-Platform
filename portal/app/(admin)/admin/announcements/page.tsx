@@ -27,7 +27,19 @@ const EMPTY_FORM = {
   body: "",
   kind: "info",
   publish_at: "",
-  expires_at: "",
+  expires_at: ""
+};
+
+const STATUS_CLASS: Record<string, string> = {
+  scheduled: "pill-status-pending",
+  active: "pill-status-positive",
+  expired: "pill-status-muted"
+};
+
+const PREVIEW_CLASS: Record<string, string> = {
+  info: "admin-announcement-preview info",
+  warning: "admin-announcement-preview warning",
+  success: "admin-announcement-preview success"
 };
 
 function fmtDt(iso: string) {
@@ -35,9 +47,11 @@ function fmtDt(iso: string) {
   try {
     return new Date(iso).toLocaleString(undefined, {
       month: "short", day: "numeric", year: "numeric",
-      hour: "2-digit", minute: "2-digit",
+      hour: "2-digit", minute: "2-digit"
     });
-  } catch { return iso; }
+  } catch {
+    return iso;
+  }
 }
 
 function localDatetimeValue(iso: string) {
@@ -46,14 +60,10 @@ function localDatetimeValue(iso: string) {
     const d = new Date(iso);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  } catch { return ""; }
+  } catch {
+    return "";
+  }
 }
-
-const STATUS_STYLE: Record<string, { color: string; border: string }> = {
-  scheduled: { color: "#c45c00", border: "#c45c0055" },
-  active:    { color: "#0d7a4f", border: "#0d7a4f55" },
-  expired:   { color: "var(--muted)", border: "var(--border)" },
-};
 
 export default function AdminAnnouncementsPage() {
   const [busy, setBusy] = useState(false);
@@ -84,7 +94,7 @@ export default function AdminAnnouncementsPage() {
       const payload = {
         ...form,
         publish_at: form.publish_at ? new Date(form.publish_at).toISOString() : new Date().toISOString(),
-        expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : "",
+        expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : ""
       };
       await apiFetch("/api/admin/announcements", { method: "POST", body: JSON.stringify(payload) });
       setSaveMsg("Saved!");
@@ -117,12 +127,14 @@ export default function AdminAnnouncementsPage() {
       body: a.body,
       kind: a.kind,
       publish_at: localDatetimeValue(a.publish_at),
-      expires_at: localDatetimeValue(a.expires_at),
+      expires_at: localDatetimeValue(a.expires_at)
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   return (
     <div className="grid gap-20">
@@ -133,58 +145,53 @@ export default function AdminAnnouncementsPage() {
 
       {error && <div className="banner banner-error"><strong>Error:</strong> {error}</div>}
 
-      {/* Create / Edit Form */}
       <section className="card stack-12">
         <h2 className="title-18">{form.announcement_id ? "Edit Announcement" : "New Announcement"}</h2>
-        <div className="grid grid-2" style={{ gap: 10 }}>
-          <label style={{ display: "grid", gap: 4, fontSize: 13, gridColumn: "span 2" }}>
+        <div className="grid grid-2 gap-10">
+          <label className="field field-sm grid-span-2">
             Title (optional short headline)
             <input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="e.g. Office Hours Moved to Thursday" />
           </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 13, gridColumn: "span 2" }}>
+
+          <label className="field field-sm grid-span-2">
             Message Body
             <textarea
+              className="input-resize"
               value={form.body}
               onChange={(e) => setForm((f) => ({ ...f, body: e.target.value }))}
               rows={3}
               placeholder="Write the full announcement text here…"
-              style={{ resize: "vertical" }}
             />
           </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+
+          <label className="field field-sm">
             Type / Style
             <select value={form.kind} onChange={(e) => setForm((f) => ({ ...f, kind: e.target.value }))}>
               {KIND_OPTIONS.map((k) => <option key={k} value={k}>{k}</option>)}
             </select>
           </label>
+
           <div />
-          <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+
+          <label className="field field-sm">
             Publish At (local time)
             <input type="datetime-local" value={form.publish_at} onChange={(e) => setForm((f) => ({ ...f, publish_at: e.target.value }))} />
           </label>
-          <label style={{ display: "grid", gap: 4, fontSize: 13 }}>
+
+          <label className="field field-sm">
             Expires At (optional)
             <input type="datetime-local" value={form.expires_at} onChange={(e) => setForm((f) => ({ ...f, expires_at: e.target.value }))} />
           </label>
         </div>
 
-        {/* Preview */}
         {(form.title || form.body) && (
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 12 }}>
-            <div className="kicker" style={{ marginBottom: 8 }}>Preview</div>
-            <div style={{
-              background: form.kind === "warning" ? "#fffbeb" : form.kind === "success" ? "#f0fdf4" : "#eff6ff",
-              border: `1.5px solid ${form.kind === "warning" ? "#f59e0b" : form.kind === "success" ? "#22c55e" : "#3b82f6"}`,
-              borderRadius: 10,
-              padding: "11px 16px",
-              display: "flex",
-              gap: 12,
-              alignItems: "flex-start",
-            }}>
-              <span style={{ fontSize: 18 }}>{form.kind === "warning" ? "⚠️" : form.kind === "success" ? "✅" : "ℹ️"}</span>
+          <div className="admin-announcement-preview-wrap">
+            <div className="kicker mb-8">Preview</div>
+            <div className={PREVIEW_CLASS[form.kind] ?? PREVIEW_CLASS.info}>
+              <span className="admin-announcement-preview-icon">{form.kind === "warning" ? "⚠️" : form.kind === "success" ? "✅" : "ℹ️"}</span>
               <div>
-                {form.title && <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 3 }}>{form.title}</div>}
-                {form.body && <div style={{ fontSize: 14, lineHeight: 1.5 }}>{form.body}</div>}
+                {form.title && <div className="admin-announcement-title">{form.title}</div>}
+                {form.body && <div className="admin-announcement-body">{form.body}</div>}
               </div>
             </div>
           </div>
@@ -194,18 +201,15 @@ export default function AdminAnnouncementsPage() {
           <button onClick={() => void save()} disabled={saving || !form.body.trim()}>
             {saving ? "Saving…" : form.announcement_id ? "Update Announcement" : "Schedule Announcement"}
           </button>
-          {form.announcement_id && (
-            <button className="secondary" onClick={() => setForm(EMPTY_FORM)}>Cancel Edit</button>
-          )}
-          {saveMsg && <span style={{ fontSize: 13, color: saveMsg === "Saved!" ? "#0d7a4f" : "var(--danger)" }}>{saveMsg}</span>}
+          {form.announcement_id && <button className="secondary" onClick={() => setForm(EMPTY_FORM)}>Cancel Edit</button>}
+          {saveMsg && <span className={`fs-13 ${saveMsg === "Saved!" ? "text-success" : "text-danger"}`}>{saveMsg}</span>}
         </div>
       </section>
 
-      {/* Announcements List */}
       <section className="card stack-12">
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <div className="row-10-baseline">
           <h2 className="title-18">All Announcements</h2>
-          <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto", fontSize: 13, padding: "4px 10px" }}>
+          <button onClick={() => void load()} disabled={busy} className="secondary ml-auto btn-sm">
             {busy ? "Loading…" : "Refresh"}
           </button>
         </div>
@@ -214,50 +218,37 @@ export default function AdminAnnouncementsPage() {
           <p className="m-0 text-muted">No announcements yet.</p>
         ) : (
           <div className="stack-10">
-            {announcements.map((a) => {
-              const ss = STATUS_STYLE[a.status] ?? STATUS_STYLE.expired;
-              return (
-                <div
-                  key={a.announcement_id}
-                  style={{
-                    background: "var(--surface-soft)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 10,
-                    padding: "12px 16px",
-                    display: "grid",
-                    gap: 8,
-                  }}
-                >
-                  <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexWrap: "wrap" }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      {a.title && <div style={{ fontWeight: 700, fontSize: 14 }}>{a.title}</div>}
-                      <div style={{ fontSize: 13, color: "var(--muted)", marginTop: a.title ? 2 : 0, whiteSpace: "pre-wrap" }}>{a.body}</div>
-                    </div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexShrink: 0 }}>
-                      <span className="pill" style={{ color: ss.color, borderColor: ss.border, fontSize: 11 }}>{a.status}</span>
-                      <span className="pill" style={{ fontSize: 11 }}>{a.kind}</span>
-                    </div>
+            {announcements.map((a) => (
+              <div key={a.announcement_id} className="admin-announcement-item">
+                <div className="admin-announcement-top">
+                  <div className="admin-announcement-main">
+                    {a.title && <div className="admin-announcement-title">{a.title}</div>}
+                    <div className={`admin-announcement-body${a.title ? " mt-2" : ""}`}>{a.body}</div>
                   </div>
-                  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: 12, color: "var(--muted)" }}>
-                      Publishes: {fmtDt(a.publish_at)}
-                      {a.expires_at ? ` · Expires: ${fmtDt(a.expires_at)}` : ""}
-                    </span>
-                    <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
-                      <button onClick={() => editAnnouncement(a)} className="secondary" style={{ fontSize: 12, padding: "3px 8px" }}>Edit</button>
-                      <button
-                        onClick={() => void deleteAnnouncement(a.announcement_id)}
-                        disabled={deleting === a.announcement_id}
-                        className="danger"
-                        style={{ fontSize: 12, padding: "3px 8px" }}
-                      >
-                        {deleting === a.announcement_id ? "…" : "Delete"}
-                      </button>
-                    </div>
+                  <div className="admin-announcement-badges">
+                    <span className={`pill fs-11 ${STATUS_CLASS[a.status] ?? "pill-status-muted"}`}>{a.status}</span>
+                    <span className="pill fs-11">{a.kind}</span>
                   </div>
                 </div>
-              );
-            })}
+
+                <div className="admin-announcement-bottom">
+                  <span className="muted-12">
+                    Publishes: {fmtDt(a.publish_at)}
+                    {a.expires_at ? ` · Expires: ${fmtDt(a.expires_at)}` : ""}
+                  </span>
+                  <div className="row-6 ml-auto">
+                    <button onClick={() => editAnnouncement(a)} className="secondary btn-xs">Edit</button>
+                    <button
+                      onClick={() => void deleteAnnouncement(a.announcement_id)}
+                      disabled={deleting === a.announcement_id}
+                      className="danger btn-xs"
+                    >
+                      {deleting === a.announcement_id ? "…" : "Delete"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </section>

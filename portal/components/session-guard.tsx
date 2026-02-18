@@ -134,7 +134,7 @@ export function SessionGuard({
 
   if (guardError && !ready) {
     return (
-      <div className="card session-guard">
+      <div className="card session-guard" role="alert">
         <div className="kicker">Session Check</div>
         <p className="session-guard-copy">
           We could not verify your access ({guardError}). You can re-open login and try again.
@@ -148,7 +148,7 @@ export function SessionGuard({
 
   if (!ready) {
     return (
-      <div className="card session-guard">
+      <div className="card session-guard" role="status" aria-live="polite">
         <div className="kicker">Session Check</div>
         <p className="session-guard-copy">Verifying your portal access...</p>
       </div>

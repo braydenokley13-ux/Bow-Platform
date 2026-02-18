@@ -67,12 +67,12 @@ export default function AdminPreviewPage() {
         subtitle="Preview the portal exactly as a specific student sees it — for debugging and support"
       />
 
-      <div className="banner" style={{ borderColor: "#3b82f6", background: "rgba(59,130,246,0.08)" }}>
+      <div className="banner preview-mode-banner">
         <strong>Preview mode</strong> reads live data for the selected student but does not modify any records. You are still authenticated as an admin.
       </div>
 
-      <form className="card" onSubmit={(e) => void onPreview(e)} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-        <label style={{ flex: 1, minWidth: 260 }}>
+      <form className="card preview-form" onSubmit={(e) => void onPreview(e)}>
+        <label className="preview-form-label">
           Student email to preview as
           <input
             type="email"
@@ -84,7 +84,7 @@ export default function AdminPreviewPage() {
         </label>
         <button disabled={busy}>{busy ? "Loading..." : "Preview as student"}</button>
         {data ? (
-          <button type="button" onClick={() => { setData(null); setEmail(""); }} style={{ opacity: 0.7 }}>
+          <button type="button" onClick={() => { setData(null); setEmail(""); }} className="secondary preview-exit-button">
             Exit preview
           </button>
         ) : null}
@@ -94,32 +94,13 @@ export default function AdminPreviewPage() {
 
       {data ? (
         <>
-          {/* Preview banner */}
-          <div
-            style={{
-              background: "#1e3a5f",
-              border: "2px solid #3b82f6",
-              borderRadius: 8,
-              padding: "10px 16px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              flexWrap: "wrap",
-              gap: 8
-            }}
-          >
-            <span style={{ fontWeight: 700, color: "#93c5fd", fontSize: 14 }}>
-              Previewing as: {data.target_email}
-            </span>
-            <button
-              onClick={() => { setData(null); setEmail(""); }}
-              style={{ fontSize: 12, padding: "3px 12px", background: "#3b82f6", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}
-            >
+          <div className="preview-active-banner">
+            <span className="preview-active-email">Previewing as: {data.target_email}</span>
+            <button onClick={() => { setData(null); setEmail(""); }} className="btn-xs preview-exit-quick">
               Exit preview
             </button>
           </div>
 
-          {/* Quick stats */}
           {data.dashboard ? (
             <section className="card row-20-wrap">
               {[
@@ -128,70 +109,47 @@ export default function AdminPreviewPage() {
                 { label: "Level", value: (data.dashboard as PreviewDashboard).level ?? "—" },
                 { label: "Day streak", value: (data.dashboard as PreviewDashboard).streak_days ?? 0 }
               ].map(({ label, value }) => (
-                <div key={label} style={{ textAlign: "center", minWidth: 80 }}>
-                  <div style={{ fontSize: 22, fontWeight: 800 }}>{value}</div>
-                  <div style={{ color: "var(--muted)", fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+                <div key={label} className="preview-stat-item">
+                  <div className="preview-stat-value">{value}</div>
+                  <div className="preview-stat-label">{label}</div>
                 </div>
               ))}
             </section>
           ) : null}
 
-          {/* Tabs */}
-          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+          <div className="row-4-wrap">
             {tabs.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                style={{
-                  padding: "6px 16px",
-                  fontWeight: activeTab === key ? 800 : 400,
-                  background: activeTab === key ? "var(--accent)" : "var(--surface)",
-                  color: activeTab === key ? "#000" : "var(--fg)",
-                  border: "1px solid var(--border)",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  fontSize: 13
-                }}
+                className={`preview-tab-btn${activeTab === key ? " active" : ""}`}
               >
                 {label}
               </button>
             ))}
           </div>
 
-          {/* Tab content */}
           <section className="card">
             {activeTab === "dashboard" && (
-              <pre style={{ margin: 0, fontSize: 12, whiteSpace: "pre-wrap", overflowX: "auto" }}>
-                {JSON.stringify(data.dashboard, null, 2)}
-              </pre>
+              <pre className="json-pre">{JSON.stringify(data.dashboard, null, 2)}</pre>
             )}
             {activeTab === "quests" && (
-              <pre style={{ margin: 0, fontSize: 12, whiteSpace: "pre-wrap", overflowX: "auto" }}>
-                {JSON.stringify(data.quests, null, 2)}
-              </pre>
+              <pre className="json-pre">{JSON.stringify(data.quests, null, 2)}</pre>
             )}
             {activeTab === "notifications" && (
-              <div style={{ display: "grid", gap: 8 }}>
+              <div className="stack-8">
                 {Array.isArray(data.recent_notifications) && data.recent_notifications.length > 0 ? (
                   data.recent_notifications.map((n) => (
-                    <div
-                      key={n.notification_id}
-                      style={{
-                        border: "1px solid var(--border)",
-                        borderRadius: 6,
-                        padding: "10px 12px",
-                        opacity: n.status === "READ" ? 0.6 : 1
-                      }}
-                    >
-                      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 4 }}>
-                        <span style={{ fontWeight: 700, fontSize: 13 }}>{n.title}</span>
+                    <div key={n.notification_id} className={`preview-notification${n.status === "READ" ? " is-read" : ""}`}>
+                      <div className="preview-notification-head">
+                        <span className="preview-notification-title">{n.title}</span>
                         <div className="row-8">
-                          <span className="pill" style={{ fontSize: 11 }}>{n.kind}</span>
-                          <span style={{ color: "var(--muted)", fontSize: 11 }}>{n.status}</span>
+                          <span className="pill fs-11">{n.kind}</span>
+                          <span className="muted-11">{n.status}</span>
                         </div>
                       </div>
-                      <div style={{ color: "var(--muted)", fontSize: 13, marginTop: 4 }}>{n.body}</div>
-                      <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 4 }}>{n.created_at}</div>
+                      <div className="muted-13 mt-4">{n.body}</div>
+                      <div className="muted-11 mt-4">{n.created_at}</div>
                     </div>
                   ))
                 ) : (
@@ -200,9 +158,7 @@ export default function AdminPreviewPage() {
               </div>
             )}
             {activeTab === "standings" && (
-              <pre style={{ margin: 0, fontSize: 12, whiteSpace: "pre-wrap", overflowX: "auto" }}>
-                {JSON.stringify(data.league_standings, null, 2)}
-              </pre>
+              <pre className="json-pre">{JSON.stringify(data.league_standings, null, 2)}</pre>
             )}
           </section>
         </>

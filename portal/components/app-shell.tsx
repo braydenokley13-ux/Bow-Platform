@@ -35,6 +35,17 @@ export function AppShell(props: {
   }, [pathname]);
 
   useEffect(() => {
+    if (!sidebarOpen) return;
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [sidebarOpen]);
+
+  useEffect(() => {
     function onShortcut(e: KeyboardEvent) {
       const key = e.key.toLowerCase();
       const isCmd = e.metaKey || e.ctrlKey;
@@ -51,6 +62,7 @@ export function AppShell(props: {
   return (
     <div className="app-shell">
       <Sidebar
+        id="portal-sidebar"
         sections={sections}
         pathname={pathname}
         mobileOpen={sidebarOpen}
@@ -62,6 +74,8 @@ export function AppShell(props: {
         <TopBar
           title={title}
           subtitle={props.role === "ADMIN" ? "Operations, analytics, and curriculum control" : "Daily wins and next best actions"}
+          sidebarId="portal-sidebar"
+          sidebarOpen={sidebarOpen}
           onOpenSidebar={() => setSidebarOpen(true)}
           onOpenPalette={() => setPaletteOpen(true)}
         />

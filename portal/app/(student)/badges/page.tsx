@@ -34,18 +34,11 @@ interface BadgeDetailPayload {
   data: Badge;
 }
 
-const RARITY_COLOR: Record<string, string> = {
-  common: "#6b7280",
-  uncommon: "#16a34a",
-  rare: "#2563eb",
-  legendary: "#d97706"
-};
-
-const RARITY_BG: Record<string, string> = {
-  common: "#f3f4f6",
-  uncommon: "#f0fdf4",
-  rare: "#eff6ff",
-  legendary: "#fffbeb"
+const RARITY_CLASS: Record<Badge["rarity"], string> = {
+  common: "badge-rarity-common",
+  uncommon: "badge-rarity-uncommon",
+  rare: "badge-rarity-rare",
+  legendary: "badge-rarity-legendary"
 };
 
 export default function BadgesPage() {
@@ -77,13 +70,15 @@ export default function BadgesPage() {
       const res = await apiFetch<BadgeDetailPayload>(`/api/badges?badge_id=${b.badge_id}`);
       setSelected(res.data);
     } catch {
-      // keep partial data
+      // Keep partial data on modal when detail fetch fails.
     } finally {
       setLoadingDetail(false);
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   const categories = ["all", ...Array.from(new Set(badges.map((b) => b.category))).sort()];
   const filtered = badges
@@ -100,23 +95,23 @@ export default function BadgesPage() {
 
       <section className="card row-14-wrap">
         <div>
-          <div style={{ fontSize: 26, fontWeight: 800 }}>
-            {earnedCount}<span style={{ fontSize: 14, fontWeight: 400, opacity: 0.55 }}>/{badges.length}</span>
+          <div className="badges-earned-score">
+            {earnedCount}<span className="badges-earned-total">/{badges.length}</span>
           </div>
-          <div style={{ fontSize: 12, opacity: 0.55 }}>badges earned</div>
+          <div className="badges-earned-label">badges earned</div>
         </div>
-        <button className="secondary ml-auto" style={{ alignSelf: "center" }} onClick={() => void load()} disabled={busy}>
+        <button className="secondary ml-auto align-self-center" onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh"}
         </button>
       </section>
 
-      <section className="card" style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+      <section className="card row-6-wrap">
         {categories.map((c) => (
           <button key={c} className={filterCategory === c ? "" : "secondary"} onClick={() => setFilterCategory(c)}>
             {c === "all" ? "All" : c}
           </button>
         ))}
-        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+        <div className="row-6 ml-auto">
           {(["all", "earned", "locked"] as const).map((s) => (
             <button key={s} className={filterStatus === s ? "" : "secondary"} onClick={() => setFilterStatus(s)}>
               {s.charAt(0).toUpperCase() + s.slice(1)}
@@ -125,40 +120,21 @@ export default function BadgesPage() {
         </div>
       </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: 10 }}>
+      <div className="badge-grid">
         {filtered.map((b) => (
           <button
             key={b.badge_id}
             onClick={() => void openBadge(b)}
-            style={{
-              all: "unset",
-              cursor: "pointer",
-              display: "grid",
-              gap: 6,
-              padding: 14,
-              borderRadius: 10,
-              border: `1px solid ${b.earned ? RARITY_COLOR[b.rarity] + "66" : "var(--border, #e5e7eb)"}`,
-              background: b.earned ? RARITY_BG[b.rarity] : "var(--card, #fff)",
-              opacity: b.earned ? 1 : 0.5,
-              filter: b.earned ? "none" : "grayscale(1)",
-              textAlign: "center",
-              alignItems: "center",
-              justifyItems: "center"
-            }}
+            className={`badge-tile ${RARITY_CLASS[b.rarity]}${b.earned ? " is-earned" : " is-locked"}`}
           >
-            <div style={{ fontSize: 40 }}>{b.icon || "🏅"}</div>
-            <div style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.3 }}>{b.name}</div>
-            <div style={{ fontSize: 11, opacity: 0.6 }}>{b.category}</div>
-            <div style={{
-              fontSize: 10, fontWeight: 700, padding: "1px 6px", borderRadius: 99,
-              background: RARITY_COLOR[b.rarity] + "22", color: RARITY_COLOR[b.rarity]
-            }}>
-              {b.rarity}
-            </div>
+            <div className="badge-icon">{b.icon || "🏅"}</div>
+            <div className="badge-name">{b.name}</div>
+            <div className="badge-category">{b.category}</div>
+            <div className="badge-rarity-pill">{b.rarity}</div>
             {b.earned ? (
-              <div style={{ fontSize: 11, color: "#16a34a", fontWeight: 600 }}>✓ Earned</div>
+              <div className="badge-earned">✓ Earned</div>
             ) : (
-              <div style={{ fontSize: 11, opacity: 0.5 }}>🔒 Locked</div>
+              <div className="badge-locked">🔒 Locked</div>
             )}
           </button>
         ))}
@@ -169,62 +145,42 @@ export default function BadgesPage() {
       ) : null}
 
       {selected ? (
-        <div
-          style={{
-            position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
-            display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 200
-          }}
-          onClick={() => setSelected(null)}
-        >
-          <div
-            style={{
-              background: "var(--card, #fff)", borderRadius: "16px 16px 0 0",
-              padding: 24, maxWidth: 520, width: "100%", maxHeight: "80vh", overflowY: "auto",
-              display: "grid", gap: 12
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 64 }}>{selected.icon || "🏅"}</div>
-              <h2 style={{ margin: "8px 0 0" }}>{selected.name}</h2>
-              <div style={{
-                display: "inline-block", marginTop: 4, fontSize: 12, fontWeight: 700,
-                padding: "2px 10px", borderRadius: 99,
-                background: RARITY_COLOR[selected.rarity] + "22", color: RARITY_COLOR[selected.rarity]
-              }}>
+        <div className="badge-modal-overlay" onClick={() => setSelected(null)}>
+          <div className="badge-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="badge-modal-icon">{selected.icon || "🏅"}</div>
+              <h2 className="badges-modal-title">{selected.name}</h2>
+              <div className={`badge-rarity-pill badge-modal-rarity ${RARITY_CLASS[selected.rarity]}`}>
                 {selected.rarity} · {selected.category}
               </div>
             </div>
 
             <p className="m-0">{selected.description}</p>
 
-            <div style={{ padding: "10px 14px", background: "var(--bg2, #f9fafb)", borderRadius: 8 }}>
-              <div className="kicker" style={{ marginBottom: 4 }}>How to unlock</div>
-              <p style={{ margin: 0, fontSize: 14 }}>{selected.criteria}</p>
+            <div className="badges-unlock-box">
+              <div className="kicker mb-4">How to unlock</div>
+              <p className="m-0 fs-14">{selected.criteria}</p>
             </div>
 
             {selected.earned ? (
-              <div style={{ color: "#16a34a", fontWeight: 600 }}>
-                ✓ You earned this on {new Date(selected.earned_at!).toLocaleDateString()}
-              </div>
+              <div className="badge-earned">✓ You earned this on {new Date(selected.earned_at!).toLocaleDateString()}</div>
             ) : (
-              <div style={{ opacity: 0.5 }}>🔒 Not yet earned</div>
+              <div className="badge-locked">🔒 Not yet earned</div>
             )}
 
             <div>
-              <div className="kicker" style={{ marginBottom: 6 }}>
+              <div className="kicker mb-6">
                 {loadingDetail ? "Loading earners..." : `${selected.earner_count ?? 0} classmate${(selected.earner_count ?? 0) !== 1 ? "s" : ""} earned this`}
               </div>
+
               {(selected.earners ?? []).length > 0 ? (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                <div className="row-6-wrap">
                   {selected.earners!.map((e) => (
-                    <span key={e.email} className="pill" style={{ fontSize: 12 }}>
-                      {e.name ?? e.email}
-                    </span>
+                    <span key={e.email} className="pill fs-12">{e.name ?? e.email}</span>
                   ))}
                 </div>
               ) : !loadingDetail ? (
-                <p style={{ margin: 0, opacity: 0.5, fontSize: 13 }}>No classmates have earned this yet.</p>
+                <p className="m-0 text-muted-50 fs-13">No classmates have earned this yet.</p>
               ) : null}
             </div>
 

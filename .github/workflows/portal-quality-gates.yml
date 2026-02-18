@@ -40,6 +40,9 @@ jobs:
       - name: Lint, typecheck, build
         run: npm run quality:check
 
+      - name: Smoke routes
+        run: npm run smoke:routes
+
   lighthouse:
     runs-on: ubuntu-latest
     needs: quality

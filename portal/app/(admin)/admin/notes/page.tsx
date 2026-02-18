@@ -70,7 +70,7 @@ export default function AdminNotesPage() {
     try {
       await apiFetch("/api/admin/notes", {
         method: "POST",
-        body: JSON.stringify({ student_email: selectedEmail, content: newContent.trim() }),
+        body: JSON.stringify({ student_email: selectedEmail, content: newContent.trim() })
       });
       setNewContent("");
       setSaveMsg("Note saved.");
@@ -103,7 +103,9 @@ export default function AdminNotesPage() {
     void loadNotes(email);
   }
 
-  useEffect(() => { void loadStudents(); }, []);
+  useEffect(() => {
+    void loadStudents();
+  }, []);
 
   const studentName = students.find((s) => s.email === selectedEmail)?.display_name;
 
@@ -114,18 +116,17 @@ export default function AdminNotesPage() {
         subtitle="Freeform notes on students — never visible to students. Timestamped and author-attributed."
       />
 
-      <div className="grid-2" style={{ display: "grid", gap: 14, gridTemplateColumns: "minmax(220px, 280px) 1fr", alignItems: "start" }}>
-        {/* Student Picker */}
+      <div className="notes-layout-grid">
         <aside className="card stack-10">
-          <div style={{ fontWeight: 700, fontSize: 15 }}>Select Student</div>
+          <div className="notes-picker-title">Select Student</div>
           <input
             type="text"
             placeholder="Filter by name or email…"
             value={inputEmail}
             onChange={(e) => setInputEmail(e.target.value)}
-            style={{ fontSize: 13 }}
+            className="fs-13"
           />
-          <div style={{ display: "grid", gap: 4, maxHeight: 360, overflowY: "auto" }}>
+          <div className="notes-student-list">
             {students
               .filter((s) =>
                 !inputEmail ||
@@ -136,98 +137,71 @@ export default function AdminNotesPage() {
                 <button
                   key={s.email}
                   onClick={() => selectStudent(s.email)}
-                  style={{
-                    textAlign: "left",
-                    padding: "7px 10px",
-                    borderRadius: 8,
-                    background: selectedEmail === s.email ? "var(--brand)" : "var(--surface-soft)",
-                    color: selectedEmail === s.email ? "#fff" : "var(--text)",
-                    border: `1px solid ${selectedEmail === s.email ? "var(--brand)" : "var(--border)"}`,
-                    cursor: "pointer",
-                    fontSize: 13,
-                  }}
+                  className={`notes-student-button${selectedEmail === s.email ? " is-active" : ""}`}
                 >
-                  <div style={{ fontWeight: 600 }}>{s.display_name}</div>
-                  <div style={{ fontSize: 11, opacity: 0.7 }}>{s.email}</div>
+                  <div className="fw-600">{s.display_name}</div>
+                  <div className="notes-student-email">{s.email}</div>
                 </button>
               ))}
-            {students.length === 0 && (
-              <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Loading students…</p>
-            )}
+            {students.length === 0 && <p className="m-0 muted-13">Loading students…</p>}
           </div>
         </aside>
 
-        {/* Notes Panel */}
         <div className="card stack-14">
           {!selectedEmail ? (
             <p className="m-0 text-muted">Select a student to view and add notes.</p>
           ) : (
             <>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                <h2 style={{ margin: 0, fontSize: 17 }}>
-                  Notes for {studentName ?? selectedEmail}
-                </h2>
-                <span style={{ color: "var(--muted)", fontSize: 12 }}>private · never visible to students</span>
+              <div className="row-8-baseline">
+                <h2 className="notes-panel-title">Notes for {studentName ?? selectedEmail}</h2>
+                <span className="muted-12">private · never visible to students</span>
               </div>
 
-              {/* Add Note */}
-              <div style={{ display: "grid", gap: 8 }}>
+              <div className="stack-8">
                 <textarea
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
                   placeholder="Add a note (intervention context, 1:1 meeting notes, behavioral flags…)"
                   rows={3}
-                  style={{ resize: "vertical", fontSize: 14 }}
+                  className="input-resize fs-14"
                 />
                 <div className="row-8-center">
                   <button onClick={() => void saveNote()} disabled={saving || !newContent.trim()}>
                     {saving ? "Saving…" : "Add Note"}
                   </button>
                   {saveMsg && (
-                    <span style={{ fontSize: 13, color: saveMsg === "Note saved." ? "#0d7a4f" : "var(--danger)" }}>{saveMsg}</span>
+                    <span className={`fs-13 ${saveMsg === "Note saved." ? "text-success" : "text-danger"}`}>{saveMsg}</span>
                   )}
                 </div>
               </div>
 
-              {/* Notes List */}
               {notesError && <div className="banner banner-error">{notesError}</div>}
 
               {loadingNotes ? (
-                <div style={{ display: "grid", gap: 8 }}>
+                <div className="stack-8">
                   {[1, 2, 3].map((i) => (
-                    <div key={i} className="skeleton sk-line" style={{ height: 60, borderRadius: 8 }} />
+                    <div key={i} className="skeleton notes-skeleton" />
                   ))}
                 </div>
               ) : notes === null ? null : notes.length === 0 ? (
-                <p style={{ color: "var(--muted)", fontSize: 14, margin: 0 }}>No notes yet for this student.</p>
+                <p className="m-0 muted-14">No notes yet for this student.</p>
               ) : (
                 <div className="stack-10">
                   {notes.map((note) => (
-                    <div
-                      key={note.note_id}
-                      style={{
-                        background: "var(--surface-soft)",
-                        border: "1px solid var(--border)",
-                        borderRadius: 10,
-                        padding: "12px 14px",
-                        display: "grid",
-                        gap: 8,
-                      }}
-                    >
-                      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{note.content}</p>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
-                        <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                    <div key={note.note_id} className="notes-item">
+                      <p className="notes-content">{note.content}</p>
+                      <div className="notes-item-footer">
+                        <span className="muted-11">
                           {note.author_email} ·{" "}
                           {new Date(note.created_at).toLocaleString(undefined, {
                             month: "short", day: "numeric", year: "numeric",
-                            hour: "2-digit", minute: "2-digit",
+                            hour: "2-digit", minute: "2-digit"
                           })}
                         </span>
                         <button
                           onClick={() => void deleteNote(note.note_id)}
                           disabled={deleting === note.note_id}
-                          className="danger"
-                          style={{ fontSize: 12, padding: "3px 8px" }}
+                          className="danger btn-xs"
                         >
                           {deleting === note.note_id ? "…" : "Delete"}
                         </button>
