@@ -4,7 +4,7 @@ import { runPortalAction } from "@/lib/portal-route";
 
 export async function GET(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const { searchParams } = new URL(req.url);
   const email = searchParams.get("email") ?? "";
