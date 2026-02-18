@@ -1,6 +1,6 @@
 "use client";
 
-import { firebaseAuth } from "@/lib/firebase-client";
+import { getFirebaseAuth } from "@/lib/firebase-client";
 
 export async function apiFetch<T = unknown>(
   input: string,
@@ -12,7 +12,7 @@ export async function apiFetch<T = unknown>(
     headers.set("content-type", "application/json");
   }
 
-  const user = firebaseAuth.currentUser;
+  const user = getFirebaseAuth()?.currentUser;
   if (user) {
     try {
       const token = await user.getIdToken();
