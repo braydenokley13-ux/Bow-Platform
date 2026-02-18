@@ -32,19 +32,19 @@ export default function ActivatePage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 16 }}>
+    <div className="auth-page grid gap-lg">
       <PageTitle title="Activate Account" subtitle="Use your invite ID to activate class access" />
-      <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 12, maxWidth: 520 }}>
-        <label>
-          Invite ID
+      <form className="card auth-form form-stack form-wide" onSubmit={onSubmit}>
+        <label className="field">
+          <span>Invite ID</span>
           <input value={inviteId} onChange={(e) => setInviteId(e.target.value)} required />
         </label>
-        <label>
-          Email
+        <label className="field">
+          <span>Email</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
-        <label>
-          New Password
+        <label className="field">
+          <span>New Password</span>
           <input
             type="password"
             value={password}
@@ -54,7 +54,7 @@ export default function ActivatePage() {
           />
         </label>
         <button disabled={busy}>{busy ? "Activating..." : "Activate account"}</button>
-        {message ? <p style={{ margin: 0 }}>{message}</p> : null}
+        {message ? <p className="form-message">{message}</p> : null}
       </form>
     </div>
   );

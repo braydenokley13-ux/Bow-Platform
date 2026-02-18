@@ -31,9 +31,9 @@ export function DarkModeToggle() {
 
   return (
     <button
-      className="secondary"
+      type="button"
+      className="secondary auth-signout"
       onClick={toggle}
-      style={{ fontSize: 13, padding: "3px 10px" }}
       aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
     >
       {dark ? "☀ Light" : "☾ Dark"}

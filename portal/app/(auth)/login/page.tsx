@@ -30,15 +30,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 16 }}>
+    <div className="auth-page grid gap-lg">
       <PageTitle title="Portal Login" subtitle="Invite-only access for BOW class users" />
-      <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 12, maxWidth: 420 }}>
-        <label>
-          Email
+      <form className="card auth-form form-stack" onSubmit={onSubmit}>
+        <label className="field">
+          <span>Email</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
-        <label>
-          Password
+        <label className="field">
+          <span>Password</span>
           <input
             type="password"
             value={password}
@@ -48,7 +48,7 @@ export default function LoginPage() {
           />
         </label>
         <button disabled={busy}>{busy ? "Signing in..." : "Sign in"}</button>
-        {message ? <p style={{ margin: 0 }}>{message}</p> : null}
+        {message ? <p className="form-message">{message}</p> : null}
       </form>
     </div>
   );

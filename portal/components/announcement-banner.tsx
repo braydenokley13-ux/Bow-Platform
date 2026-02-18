@@ -17,10 +17,10 @@ interface AnnouncementsPayload {
   data: { announcements: Announcement[] };
 }
 
-const KIND_STYLES: Record<string, { bg: string; border: string; color: string; icon: string }> = {
-  info:    { bg: "#eff6ff", border: "#3b82f6", color: "#1d4ed8", icon: "ℹ️" },
-  warning: { bg: "#fffbeb", border: "#f59e0b", color: "#92400e", icon: "⚠️" },
-  success: { bg: "#f0fdf4", border: "#22c55e", color: "#166534", icon: "✅" },
+const KIND_ICON: Record<string, string> = {
+  info: "ℹ️",
+  warning: "⚠️",
+  success: "✅"
 };
 
 export function AnnouncementBanner() {
@@ -49,49 +49,23 @@ export function AnnouncementBanner() {
   if (visible.length === 0) return null;
 
   return (
-    <div style={{ display: "grid", gap: 8, marginBottom: 4 }}>
+    <div className="announcement-stack">
       {visible.map((a) => {
-        const style = KIND_STYLES[a.kind] ?? KIND_STYLES.info;
+        const kind = KIND_ICON[a.kind] ? a.kind : "info";
         return (
-          <div
-            key={a.announcement_id}
-            role="alert"
-            style={{
-              background: style.bg,
-              border: `1.5px solid ${style.border}`,
-              borderRadius: 10,
-              padding: "11px 16px",
-              display: "flex",
-              gap: 12,
-              alignItems: "flex-start",
-              color: style.color,
-            }}
-          >
-            <span style={{ fontSize: 18, flexShrink: 0 }}>{style.icon}</span>
-            <div style={{ flex: 1, minWidth: 0 }}>
+          <div key={a.announcement_id} role="alert" className={`announcement ${kind}`}>
+            <span className="announcement-icon">{KIND_ICON[kind]}</span>
+            <div className="announcement-copy">
               {a.title && (
-                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: a.body ? 3 : 0 }}>
-                  {a.title}
-                </div>
+                <p className="announcement-title">{a.title}</p>
               )}
-              {a.body && (
-                <div style={{ fontSize: 14, lineHeight: 1.5, whiteSpace: "pre-wrap" }}>{a.body}</div>
-              )}
+              {a.body && <p className="announcement-body">{a.body}</p>}
             </div>
             <button
+              type="button"
+              className="announcement-close"
               onClick={() => void dismiss(a.announcement_id)}
               aria-label="Dismiss announcement"
-              style={{
-                background: "transparent",
-                border: "none",
-                cursor: "pointer",
-                color: style.color,
-                fontSize: 18,
-                lineHeight: 1,
-                padding: "0 4px",
-                opacity: 0.6,
-                flexShrink: 0,
-              }}
             >
               ×
             </button>

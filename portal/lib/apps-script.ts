@@ -59,14 +59,29 @@ export async function callAppsScriptAction<TData>(args: {
     })
   };
 
-  const res = await fetch(env.appsScript.url, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json"
-    },
-    body: JSON.stringify(payload),
-    cache: "no-store"
-  });
+  const timeoutMs = Number(process.env.APPS_SCRIPT_TIMEOUT_MS || 12000);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  let res: Response;
+  try {
+    res = await fetch(env.appsScript.url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(payload),
+      cache: "no-store",
+      signal: controller.signal
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Apps Script timeout after ${timeoutMs}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   if (!res.ok) {
     throw new Error(`Apps Script HTTP ${res.status}`);

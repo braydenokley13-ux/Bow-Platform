@@ -1,6 +1,5 @@
 import "./globals.css";
 import type { Metadata } from "next";
-import { TopNav } from "@/components/top-nav";
 
 export const metadata: Metadata = {
   title: "BOW Sports Capital Portal",
@@ -10,9 +9,11 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>
-        <TopNav />
-        <main>{children}</main>
+      <body className="portal-body">
+        <a className="skip-link" href="#app-content">
+          Skip to content
+        </a>
+        {children}
       </body>
     </html>
   );

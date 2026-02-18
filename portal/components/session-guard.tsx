@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
@@ -20,6 +21,22 @@ function isAdminRole(role: string) {
   return r === "ADMIN" || r === "INSTRUCTOR";
 }
 
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error("Session verification timed out"));
+        }, timeoutMs);
+      })
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export function SessionGuard({
   children,
   requireAdmin = false
@@ -33,6 +50,7 @@ export function SessionGuard({
   const [authReady, setAuthReady] = useState(false);
   const [hasFirebaseUser, setHasFirebaseUser] = useState(false);
   const [ready, setReady] = useState(false);
+  const [guardError, setGuardError] = useState<string>("");
 
   useEffect(() => {
     const auth = getFirebaseAuth();
@@ -61,7 +79,7 @@ export function SessionGuard({
 
     async function checkSession() {
       try {
-        const response = await apiFetch<SessionPayload>("/api/me/session");
+        const response = await withTimeout(apiFetch<SessionPayload>("/api/me/session"), 12000);
         const role = String(response?.data?.role || "").toUpperCase();
         const status = String(response?.data?.status || "ACTIVE").toUpperCase();
 
@@ -76,8 +94,11 @@ export function SessionGuard({
         }
 
         if (!cancelled) setReady(true);
-      } catch {
-        router.replace(`/login?next=${encodeURIComponent(pathname || "/dashboard")}`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Session check failed";
+        if (cancelled) return;
+        setGuardError(message);
+        router.replace(`/login?next=${encodeURIComponent(pathname || "/dashboard")}&reason=session-check`);
       }
     }
 
@@ -88,11 +109,25 @@ export function SessionGuard({
     };
   }, [authReady, hasFirebaseUser, pathname, requireAdmin, router]);
 
+  if (guardError && !ready) {
+    return (
+      <div className="card session-guard">
+        <div className="kicker">Session Check</div>
+        <p className="session-guard-copy">
+          We could not verify your access ({guardError}). You can re-open login and try again.
+        </p>
+        <p className="session-guard-copy">
+          <Link href={`/login?next=${encodeURIComponent(pathname || "/dashboard")}`}>Go to login</Link>
+        </p>
+      </div>
+    );
+  }
+
   if (!ready) {
     return (
-      <div className="card" style={{ marginTop: 16 }}>
+      <div className="card session-guard">
         <div className="kicker">Session Check</div>
-        <p style={{ margin: "8px 0 0 0" }}>Verifying your portal access...</p>
+        <p className="session-guard-copy">Verifying your portal access...</p>
       </div>
     );
   }

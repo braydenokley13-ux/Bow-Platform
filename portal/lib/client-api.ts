@@ -4,11 +4,12 @@ import { getFirebaseAuth } from "@/lib/firebase-client";
 
 export async function apiFetch<T = unknown>(
   input: string,
-  init?: RequestInit & { json?: unknown }
+  init?: RequestInit & { json?: unknown; timeoutMs?: number }
 ): Promise<T> {
+  const { json, timeoutMs = 15000, ...fetchInit } = init ?? {};
   const headers = new Headers(init?.headers || {});
 
-  if (!headers.has("content-type") && init?.json !== undefined) {
+  if (!headers.has("content-type") && json !== undefined) {
     headers.set("content-type", "application/json");
   }
 
@@ -28,11 +29,31 @@ export async function apiFetch<T = unknown>(
     headers.set("x-portal-role", process.env.NEXT_PUBLIC_DEV_ACTOR_ROLE || "ADMIN");
   }
 
-  const res = await fetch(input, {
-    ...init,
-    headers,
-    body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body
-  });
+  const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+
+  if (controller) {
+    timeout = setTimeout(() => {
+      controller.abort();
+    }, timeoutMs);
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(input, {
+      ...fetchInit,
+      headers,
+      signal: fetchInit.signal ?? controller?.signal,
+      body: json !== undefined ? JSON.stringify(json) : fetchInit.body
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error("Request timed out");
+    }
+    throw err;
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 
   let payload: unknown = null;
   try {

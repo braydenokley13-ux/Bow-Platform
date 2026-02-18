@@ -30,15 +30,15 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="grid" style={{ gap: 16 }}>
+    <div className="auth-page grid gap-lg">
       <PageTitle title="Reset Password" subtitle="Request a password reset link" />
-      <form className="card" onSubmit={onSubmit} style={{ display: "grid", gap: 12, maxWidth: 420 }}>
-        <label>
-          Email
+      <form className="card auth-form form-stack" onSubmit={onSubmit}>
+        <label className="field">
+          <span>Email</span>
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </label>
         <button disabled={busy}>{busy ? "Sending..." : "Send reset link"}</button>
-        {message ? <p style={{ margin: 0 }}>{message}</p> : null}
+        {message ? <p className="form-message">{message}</p> : null}
       </form>
     </div>
   );
