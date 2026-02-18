@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth-status";
+import { DarkModeToggle } from "@/components/dark-mode-toggle";
 
 const studentLinks = [
   ["Onboarding", "/onboarding"],
   ["Home", "/home"],
   ["Dashboard", "/dashboard"],
+  ["Check-In", "/checkin"],
+  ["Goal", "/goal"],
+  ["Profile", "/profile"],
+  ["Join Class", "/join"],
   ["Events", "/events"],
   ["Pods", "/pods"],
   ["Quests", "/quests"],
@@ -54,7 +59,9 @@ const adminLinks = [
   ["Negotiation", "/admin/negotiation/scorecards"],
   ["Journal Review", "/admin/journal/review"],
   ["Students", "/admin/students"],
+  ["Goals", "/admin/goals"],
   ["Broadcast", "/admin/broadcast"],
+  ["Settings", "/admin/settings"],
   ["Support", "/admin/support"],
   ["Invites", "/admin/invites"],
   ["Action Queue", "/admin/action-queue"],
@@ -76,7 +83,10 @@ export function TopNav() {
         </div>
 
         <div style={{ display: "grid", gap: 8 }}>
-          <AuthStatus />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <AuthStatus />
+            <DarkModeToggle />
+          </div>
           <div className="nav-row">
             {studentLinks.map(([label, href]) => (
               <Link key={href} href={href}>
