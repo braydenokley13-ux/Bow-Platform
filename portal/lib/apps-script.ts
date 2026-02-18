@@ -59,7 +59,8 @@ export async function callAppsScriptAction<TData>(args: {
     })
   };
 
-  const timeoutMs = Number(process.env.APPS_SCRIPT_TIMEOUT_MS || 12000);
+  const configuredTimeout = Number(process.env.APPS_SCRIPT_TIMEOUT_MS || 20000);
+  const timeoutMs = Number.isFinite(configuredTimeout) && configuredTimeout > 0 ? configuredTimeout : 20000;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 

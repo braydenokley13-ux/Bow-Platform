@@ -16,6 +16,9 @@ const SUBJECT_PREFIX = 'BOW';
 const FINISH_TAB = 'Bow Finish Form';
 const STORE_TAB = 'XP Store';
 const TZ = 'America/New_York';
+const SCHEMA_GUARD_CACHE_KEY = 'portal_schema_ok_v1';
+const SCHEMA_GUARD_TTL_SECONDS = 300;
+let schemaGuardCheckedThisExecution_ = false;
 
 const FINISH_FORM_ID = 'hkI3FbkUFoSRlznHRwt7fjp9FnxaGY4sxYmIHOjOc8Q';
 const STORE_FORM_ID = '1Yi-jrfJaJKMCtVdqMDo-HkoDOFeeehjNYsoc4gxyXVU';
@@ -886,12 +889,40 @@ function verifyCriticalSchema() {
   }
 }
 
+function hasRecentSchemaGuard_() {
+  if (schemaGuardCheckedThisExecution_) return true;
+
+  try {
+    const cached = CacheService.getScriptCache().get(SCHEMA_GUARD_CACHE_KEY);
+    if (cached === '1') {
+      schemaGuardCheckedThisExecution_ = true;
+      return true;
+    }
+  } catch (err) {
+    Logger.log('Schema cache read failed: ' + err.message);
+  }
+
+  return false;
+}
+
+function markSchemaGuardFresh_() {
+  schemaGuardCheckedThisExecution_ = true;
+  try {
+    CacheService.getScriptCache().put(SCHEMA_GUARD_CACHE_KEY, '1', SCHEMA_GUARD_TTL_SECONDS);
+  } catch (err) {
+    Logger.log('Schema cache write failed: ' + err.message);
+  }
+}
+
 function ensureSchema() {
+  if (hasRecentSchemaGuard_()) return;
+
   Object.keys(SHEET_SCHEMAS).forEach(function(sheetName) {
     ensureSheetWithHeaders(sheetName, SHEET_SCHEMAS[sheetName]);
   });
 
   verifyCriticalSchema();
+  markSchemaGuardFresh_();
 }
 
 /* ===================== Core Lookups ===================== */
@@ -2524,8 +2555,6 @@ function renderResultHtml(credential, passId) {
 
 function doPost(e) {
   try {
-    ensureSchema();
-
     const raw = e && e.postData && e.postData.contents ? e.postData.contents : '{}';
     const data = JSON.parse(raw);
 
@@ -2545,6 +2574,8 @@ function doPost(e) {
         .createTextOutput(JSON.stringify(actionResult))
         .setMimeType(ContentService.MimeType.JSON);
     }
+
+    ensureSchema();
 
     const required = ['email', 'tier', 'level', 'score'];
     for (let i = 0; i < required.length; i++) {
