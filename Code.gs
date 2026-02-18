@@ -590,6 +590,40 @@ const SHEET_SCHEMAS = {
     'events_participated',
     'quests_completed',
     'kudos_sent'
+  ],
+  // Feature 40: Referral / Invite System
+  Referral_Codes: [
+    'referral_code',
+    'email',
+    'created_at',
+    'uses_count'
+  ],
+  Referral_Redemptions: [
+    'redemption_id',
+    'referral_code',
+    'referrer_email',
+    'referred_email',
+    'redeemed_at',
+    'xp_awarded'
+  ],
+  // Feature 42: Admin Private Notes on Students
+  Admin_Notes: [
+    'note_id',
+    'student_email',
+    'author_email',
+    'body',
+    'created_at'
+  ],
+  // Feature 43: Scheduled Portal Announcements
+  Portal_Announcements: [
+    'announcement_id',
+    'title',
+    'body',
+    'show_at',
+    'auto_hide_at',
+    'status',
+    'created_by',
+    'created_at'
   ]
 };
 

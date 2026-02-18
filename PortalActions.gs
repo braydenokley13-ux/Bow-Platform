@@ -5411,6 +5411,522 @@ function actionActivateInvite_(payload) {
   return portalErr_('INVITE_NOT_FOUND', 'Invite not found.', null);
 }
 
+/* =====================================================================
+ * FEATURE 40 — Referral / Invite System
+ * ===================================================================== */
+
+function actionGetMyReferralLink_(payload) {
+  const email = assertActorEmail_(payload);
+
+  const d = readSheet('Referral_Codes');
+  for (let i = 0; i < d.rows.length; i++) {
+    const em = String(getRowValue(d.rows[i], d, 'email', '')).toLowerCase().trim();
+    if (em === email) {
+      return portalOk_('REFERRAL_LINK_OK', 'Referral code retrieved.', {
+        referral_code: String(getRowValue(d.rows[i], d, 'referral_code', '')),
+        uses_count: Number(getRowValue(d.rows[i], d, 'uses_count', 0)) || 0,
+        created_at: getRowValue(d.rows[i], d, 'created_at', '')
+      });
+    }
+  }
+
+  // Create a new referral code for this student.
+  const code = 'REF_' + Utilities.getUuid().replace(/-/g, '').substring(0, 12).toUpperCase();
+  appendObjectRow('Referral_Codes', {
+    referral_code: code,
+    email: email,
+    created_at: nowIso_(),
+    uses_count: 0
+  });
+
+  return portalOk_('REFERRAL_LINK_CREATED', 'Referral code created.', {
+    referral_code: code,
+    uses_count: 0,
+    created_at: nowIso_()
+  });
+}
+
+function actionAdminRedeemReferral_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const referralCode = String(data.referral_code || '').trim();
+  const referredEmail = String(data.referred_email || '').toLowerCase().trim();
+  const xpAmount = Math.max(0, Number(data.xp_amount || 500));
+
+  if (!referralCode || !referredEmail) {
+    return portalErr_('MISSING_FIELDS', 'referral_code and referred_email are required.', null);
+  }
+
+  // Look up the referral code to find the referrer.
+  const rc = readSheet('Referral_Codes');
+  let referrerEmail = '';
+  let rcRowNum = -1;
+  for (let i = 0; i < rc.rows.length; i++) {
+    const code = String(getRowValue(rc.rows[i], rc, 'referral_code', '')).trim();
+    if (code !== referralCode) continue;
+    referrerEmail = String(getRowValue(rc.rows[i], rc, 'email', '')).toLowerCase().trim();
+    rcRowNum = i + 2;
+    break;
+  }
+
+  if (!referrerEmail) {
+    return portalErr_('INVALID_REFERRAL_CODE', 'Referral code not found.', null);
+  }
+
+  // Check for duplicate redemptions.
+  const rr = readSheet('Referral_Redemptions');
+  for (let i = 0; i < rr.rows.length; i++) {
+    const refEmail = String(getRowValue(rr.rows[i], rr, 'referred_email', '')).toLowerCase().trim();
+    if (refEmail === referredEmail) {
+      return portalErr_('ALREADY_REDEEMED', 'This referred email has already been redeemed.', null);
+    }
+  }
+
+  const redemptionId = generateId_('RDM');
+  appendObjectRow('Referral_Redemptions', {
+    redemption_id: redemptionId,
+    referral_code: referralCode,
+    referrer_email: referrerEmail,
+    referred_email: referredEmail,
+    redeemed_at: nowIso_(),
+    xp_awarded: xpAmount
+  });
+
+  // Increment uses_count on the referral code row.
+  if (rcRowNum > 0) {
+    const curUses = Number(getRowValue(rc.rows[rcRowNum - 2], rc, 'uses_count', 0)) || 0;
+    setCellByKey(rc, rcRowNum, 'uses_count', curUses + 1);
+  }
+
+  // Award XP to the referrer via XP_Ledger.
+  appendObjectRow('XP_Ledger', {
+    ts: nowIso_(),
+    email: referrerEmail,
+    name: getDisplayNameByEmail_(referrerEmail),
+    track: 'REFERRAL',
+    outcome: 'REFERRAL_BONUS',
+    action: 'REFERRAL_REDEEMED',
+    module: '',
+    lesson: '',
+    points: xpAmount,
+    note: 'Referral bonus for enrolling ' + referredEmail,
+    key: 'referral:' + redemptionId,
+    ref_code: referralCode,
+    tier: '',
+    delta_reason: 'REFERRAL_BONUS',
+    source: 'admin'
+  });
+
+  addNotification_(referrerEmail, 'Referral bonus earned', 'You earned ' + xpAmount + ' XP because ' + referredEmail + ' enrolled using your referral link!', 'INFO');
+
+  logOps('portal_admin_redeem_referral_ok', {
+    referral_code: referralCode,
+    referrer_email: referrerEmail,
+    referred_email: referredEmail,
+    xp_awarded: xpAmount,
+    redemption_id: redemptionId
+  });
+
+  return portalOk_('REFERRAL_REDEEMED', 'Referral redeemed and XP awarded.', {
+    redemption_id: redemptionId,
+    referrer_email: referrerEmail,
+    referred_email: referredEmail,
+    xp_awarded: xpAmount
+  });
+}
+
+function actionAdminGetReferralActivity_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const codes = listSheetObjects_('Referral_Codes', false);
+  const redemptions = listSheetObjects_('Referral_Redemptions', false);
+
+  return portalOk_('REFERRAL_ACTIVITY_OK', 'Referral activity loaded.', {
+    referral_codes: codes,
+    referral_redemptions: redemptions
+  });
+}
+
+/* =====================================================================
+ * FEATURE 41 — Student Spotlight Generator
+ * ===================================================================== */
+
+function actionAdminGetStudentSpotlight_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const targetEmail = String(data.email || '').toLowerCase().trim();
+  if (!targetEmail) return portalErr_('MISSING_EMAIL', 'Student email is required.', null);
+
+  // Basic student info.
+  const pu = getPortalUser_(targetEmail);
+  const users = readSheet('Users');
+  let displayName = targetEmail.split('@')[0];
+  let xp = 0;
+  let level = 1;
+  let streakDays = 0;
+  for (let i = 0; i < users.rows.length; i++) {
+    const em = String(getRowValue(users.rows[i], users, 'email', '')).toLowerCase().trim();
+    if (em !== targetEmail) continue;
+    displayName = String(getRowValue(users.rows[i], users, 'display_name', '') || targetEmail.split('@')[0]);
+    xp = Number(getRowValue(users.rows[i], users, 'xp', 0)) || 0;
+    level = Number(getRowValue(users.rows[i], users, 'level', 1)) || 1;
+    streakDays = Number(getRowValue(users.rows[i], users, 'streak_days', 0)) || 0;
+    break;
+  }
+
+  // Badges.
+  const achievements = readSheet('Achievements');
+  const badges = [];
+  for (let i = 0; i < achievements.rows.length; i++) {
+    const em = String(getRowValue(achievements.rows[i], achievements, 'email', '')).toLowerCase().trim();
+    if (em !== targetEmail) continue;
+    badges.push(String(getRowValue(achievements.rows[i], achievements, 'badge_id', '')));
+  }
+
+  // League points this season.
+  let leaguePoints = 0;
+  const activeSeason = getActiveSeason_();
+  if (activeSeason) {
+    const lpl = readSheet('League_Points_Ledger');
+    for (let i = 0; i < lpl.rows.length; i++) {
+      const em = String(getRowValue(lpl.rows[i], lpl, 'email', '')).toLowerCase().trim();
+      const sid = String(getRowValue(lpl.rows[i], lpl, 'season_id', '')).trim();
+      if (em !== targetEmail || sid !== activeSeason.season_id) continue;
+      leaguePoints += Number(getRowValue(lpl.rows[i], lpl, 'delta_points', 0)) || 0;
+    }
+  }
+
+  // Best journal quote.
+  let bestQuote = '';
+  const journal = readSheet('Decision_Journal');
+  const journalEntries = [];
+  for (let i = 0; i < journal.rows.length; i++) {
+    const em = String(getRowValue(journal.rows[i], journal, 'email', '')).toLowerCase().trim();
+    if (em !== targetEmail) continue;
+    const status = String(getRowValue(journal.rows[i], journal, 'status', '')).toUpperCase();
+    if (status !== 'SCORED') continue;
+    const text = String(getRowValue(journal.rows[i], journal, 'decision_text', '') || '').trim();
+    if (text) journalEntries.push(text);
+  }
+  if (journalEntries.length > 0) {
+    bestQuote = journalEntries[journalEntries.length - 1].substring(0, 200);
+  }
+
+  // Claims count.
+  const xpLedger = readSheet('XP_Ledger');
+  let claimsCount = 0;
+  for (let i = 0; i < xpLedger.rows.length; i++) {
+    const em = String(getRowValue(xpLedger.rows[i], xpLedger, 'email', '')).toLowerCase().trim();
+    const action = String(getRowValue(xpLedger.rows[i], xpLedger, 'action', '')).toUpperCase();
+    if (em === targetEmail && action === 'CLAIM_ACCEPTED') claimsCount++;
+  }
+
+  return portalOk_('SPOTLIGHT_OK', 'Spotlight data loaded.', {
+    email: targetEmail,
+    display_name: displayName,
+    xp: xp,
+    level: level,
+    streak_days: streakDays,
+    badges: badges,
+    top_badge: badges.length > 0 ? badges[badges.length - 1] : null,
+    league_points: leaguePoints,
+    claims_count: claimsCount,
+    best_quote: bestQuote,
+    active_season: activeSeason ? activeSeason.title : null,
+    role: pu ? pu.role : 'STUDENT',
+    status: pu ? pu.status : 'ACTIVE'
+  });
+}
+
+/* =====================================================================
+ * FEATURE 42 — Admin Private Notes on Students
+ * ===================================================================== */
+
+function actionAdminAddStudentNote_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const studentEmail = String(data.student_email || '').toLowerCase().trim();
+  const body = String(data.body || '').trim();
+
+  if (!studentEmail || !body) {
+    return portalErr_('MISSING_FIELDS', 'student_email and body are required.', null);
+  }
+
+  const noteId = generateId_('NOTE');
+  appendObjectRow('Admin_Notes', {
+    note_id: noteId,
+    student_email: studentEmail,
+    author_email: String(payload.actorEmail || '').toLowerCase(),
+    body: body,
+    created_at: nowIso_()
+  });
+
+  logOps('portal_admin_note_added', {
+    note_id: noteId,
+    student_email: studentEmail,
+    author: String(payload.actorEmail || '').toLowerCase()
+  });
+
+  return portalOk_('NOTE_ADDED', 'Note added.', { note_id: noteId });
+}
+
+function actionAdminGetStudentNotes_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const filterEmail = String(data.student_email || '').toLowerCase().trim();
+
+  const d = readSheet('Admin_Notes');
+  const out = [];
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const stuEmail = String(getRowValue(row, d, 'student_email', '')).toLowerCase().trim();
+    if (filterEmail && stuEmail !== filterEmail) continue;
+    out.push({
+      note_id: String(getRowValue(row, d, 'note_id', '')),
+      student_email: stuEmail,
+      author_email: String(getRowValue(row, d, 'author_email', '')).toLowerCase(),
+      body: String(getRowValue(row, d, 'body', '')),
+      created_at: getRowValue(row, d, 'created_at', '')
+    });
+  }
+
+  // Return most recent first.
+  out.sort(function(a, b) { return sortAscDate_(b.created_at, a.created_at); });
+
+  return portalOk_('NOTES_OK', 'Notes loaded.', out);
+}
+
+function actionAdminDeleteStudentNote_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const noteId = String(data.note_id || '').trim();
+  if (!noteId) return portalErr_('MISSING_NOTE_ID', 'note_id is required.', null);
+
+  const d = readSheet('Admin_Notes');
+  for (let i = 0; i < d.rows.length; i++) {
+    const id = String(getRowValue(d.rows[i], d, 'note_id', '')).trim();
+    if (id !== noteId) continue;
+    d.sh.deleteRow(i + 2);
+    logOps('portal_admin_note_deleted', { note_id: noteId, actor: String(payload.actorEmail || '').toLowerCase() });
+    return portalOk_('NOTE_DELETED', 'Note deleted.', { note_id: noteId });
+  }
+
+  return portalErr_('NOTE_NOT_FOUND', 'Note not found.', null);
+}
+
+/* =====================================================================
+ * FEATURE 43 — Scheduled Portal Announcements
+ * ===================================================================== */
+
+function actionAdminUpsertAnnouncement_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const existingId = String(data.announcement_id || '').trim();
+  const title = String(data.title || '').trim();
+  const body = String(data.body || '').trim();
+  const showAt = String(data.show_at || '').trim();
+  const autoHideAt = String(data.auto_hide_at || '').trim();
+
+  if (!title || !body) {
+    return portalErr_('MISSING_FIELDS', 'title and body are required.', null);
+  }
+
+  const d = readSheet('Portal_Announcements');
+
+  if (existingId) {
+    for (let i = 0; i < d.rows.length; i++) {
+      const id = String(getRowValue(d.rows[i], d, 'announcement_id', '')).trim();
+      if (id !== existingId) continue;
+      if (title) setCellByKey(d, i + 2, 'title', title);
+      if (body) setCellByKey(d, i + 2, 'body', body);
+      if (showAt !== undefined) setCellByKey(d, i + 2, 'show_at', showAt);
+      if (autoHideAt !== undefined) setCellByKey(d, i + 2, 'auto_hide_at', autoHideAt);
+      if (data.status) setCellByKey(d, i + 2, 'status', String(data.status).toUpperCase());
+      return portalOk_('ANNOUNCEMENT_UPDATED', 'Announcement updated.', { announcement_id: existingId });
+    }
+    return portalErr_('ANNOUNCEMENT_NOT_FOUND', 'Announcement not found.', null);
+  }
+
+  const announcementId = generateId_('ANN');
+  appendObjectRow('Portal_Announcements', {
+    announcement_id: announcementId,
+    title: title,
+    body: body,
+    show_at: showAt || nowIso_(),
+    auto_hide_at: autoHideAt || '',
+    status: 'ACTIVE',
+    created_by: String(payload.actorEmail || '').toLowerCase(),
+    created_at: nowIso_()
+  });
+
+  logOps('portal_admin_announcement_created', {
+    announcement_id: announcementId,
+    title: title,
+    actor: String(payload.actorEmail || '').toLowerCase()
+  });
+
+  return portalOk_('ANNOUNCEMENT_CREATED', 'Announcement created.', { announcement_id: announcementId });
+}
+
+function actionAdminListAnnouncements_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const d = readSheet('Portal_Announcements');
+  const out = [];
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    out.push({
+      announcement_id: String(getRowValue(row, d, 'announcement_id', '')),
+      title: String(getRowValue(row, d, 'title', '')),
+      body: String(getRowValue(row, d, 'body', '')),
+      show_at: getRowValue(row, d, 'show_at', ''),
+      auto_hide_at: getRowValue(row, d, 'auto_hide_at', ''),
+      status: String(getRowValue(row, d, 'status', 'ACTIVE')).toUpperCase(),
+      created_by: String(getRowValue(row, d, 'created_by', '')).toLowerCase(),
+      created_at: getRowValue(row, d, 'created_at', '')
+    });
+  }
+  out.sort(function(a, b) { return sortAscDate_(b.created_at, a.created_at); });
+  return portalOk_('ANNOUNCEMENTS_OK', 'Announcements loaded.', out);
+}
+
+function actionAdminDismissAnnouncement_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const announcementId = String(data.announcement_id || '').trim();
+  if (!announcementId) return portalErr_('MISSING_ID', 'announcement_id is required.', null);
+
+  const d = readSheet('Portal_Announcements');
+  for (let i = 0; i < d.rows.length; i++) {
+    const id = String(getRowValue(d.rows[i], d, 'announcement_id', '')).trim();
+    if (id !== announcementId) continue;
+    setCellByKey(d, i + 2, 'status', 'DISMISSED');
+    logOps('portal_admin_announcement_dismissed', { announcement_id: announcementId });
+    return portalOk_('ANNOUNCEMENT_DISMISSED', 'Announcement dismissed.', { announcement_id: announcementId });
+  }
+
+  return portalErr_('ANNOUNCEMENT_NOT_FOUND', 'Announcement not found.', null);
+}
+
+function actionGetActiveAnnouncements_(payload) {
+  assertActorEmail_(payload);
+  const now = new Date();
+
+  const d = readSheet('Portal_Announcements');
+  const out = [];
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const status = String(getRowValue(row, d, 'status', '')).toUpperCase();
+    if (status !== 'ACTIVE') continue;
+
+    const showAt = getRowValue(row, d, 'show_at', '');
+    if (showAt) {
+      const showDate = toDate_(showAt);
+      if (showDate && showDate > now) continue;
+    }
+
+    const autoHideAt = getRowValue(row, d, 'auto_hide_at', '');
+    if (autoHideAt) {
+      const hideDate = toDate_(autoHideAt);
+      if (hideDate && hideDate < now) continue;
+    }
+
+    out.push({
+      announcement_id: String(getRowValue(row, d, 'announcement_id', '')),
+      title: String(getRowValue(row, d, 'title', '')),
+      body: String(getRowValue(row, d, 'body', '')),
+      show_at: showAt,
+      created_at: getRowValue(row, d, 'created_at', '')
+    });
+  }
+
+  out.sort(function(a, b) { return sortAscDate_(b.created_at, a.created_at); });
+  return portalOk_('ANNOUNCEMENTS_OK', 'Active announcements loaded.', out);
+}
+
+/* =====================================================================
+ * FEATURE 44 — Admin Broadcast Message
+ * ===================================================================== */
+
+function actionAdminBroadcastMessage_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const title = String(data.title || '').trim();
+  const body = String(data.body || '').trim();
+  const kind = String(data.kind || 'INFO').toUpperCase();
+
+  if (!title || !body) {
+    return portalErr_('MISSING_FIELDS', 'title and body are required.', null);
+  }
+
+  // Get all active students.
+  const pu = readSheet('Portal_Users');
+  const recipients = [];
+  for (let i = 0; i < pu.rows.length; i++) {
+    const row = pu.rows[i];
+    const email = String(getRowValue(row, pu, 'email', '')).toLowerCase().trim();
+    const role = String(getRowValue(row, pu, 'role', '')).toUpperCase();
+    const status = String(getRowValue(row, pu, 'status', '')).toUpperCase();
+    if (!email || role !== 'STUDENT' || status === 'SUSPENDED') continue;
+    recipients.push(email);
+  }
+
+  for (let i = 0; i < recipients.length; i++) {
+    addNotification_(recipients[i], title, body, kind);
+  }
+
+  logOps('portal_admin_broadcast_sent', {
+    title: title,
+    actor: String(payload.actorEmail || '').toLowerCase(),
+    recipient_count: recipients.length
+  });
+
+  return portalOk_('BROADCAST_SENT', 'Broadcast message sent to ' + recipients.length + ' student(s).', {
+    recipient_count: recipients.length,
+    title: title
+  });
+}
+
+/* =====================================================================
+ * FEATURE 45 — View-As-Student (Admin Preview Mode)
+ * ===================================================================== */
+
+function actionAdminGetStudentPreview_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+
+  const data = payload.data || {};
+  const targetEmail = String(data.email || '').toLowerCase().trim();
+  if (!targetEmail) return portalErr_('MISSING_EMAIL', 'email is required.', null);
+
+  // Fetch core student data by impersonating with a synthesized payload.
+  const studentPayload = {
+    actorEmail: targetEmail,
+    actorRole: 'STUDENT',
+    data: {}
+  };
+
+  const dashboard = actionGetDashboard_(studentPayload);
+  const quests = actionGetMyQuests_(studentPayload);
+  const notifications = actionGetNotifications_({ actorEmail: targetEmail, actorRole: 'STUDENT', data: { limit: 20 } });
+  const leagueStandings = actionGetLeagueStandings_(studentPayload);
+
+  return portalOk_('PREVIEW_OK', 'Student preview data loaded.', {
+    target_email: targetEmail,
+    dashboard: dashboard.data,
+    quests: quests.data,
+    recent_notifications: notifications.data,
+    league_standings: leagueStandings.data
+  });
+}
+
 function handlePortalActionRequest_(payload) {
   const startedAt = Date.now();
 
@@ -5573,7 +6089,32 @@ function handlePortalActionRequest_(payload) {
       'portal.admin.upsertCalendarEvent': actionAdminUpsertCalendarEvent_,
       'portal.admin.createRaffle': actionAdminCreateRaffle_,
       'portal.admin.closeDrawRaffle': actionAdminCloseDrawRaffle_,
-      'portal.admin.getAuditLog': actionAdminAuditLog_
+      'portal.admin.getAuditLog': actionAdminAuditLog_,
+
+      // Feature 40: Referral / Invite System
+      'portal.getMyReferralLink': actionGetMyReferralLink_,
+      'portal.admin.redeemReferral': actionAdminRedeemReferral_,
+      'portal.admin.getReferralActivity': actionAdminGetReferralActivity_,
+
+      // Feature 41: Student Spotlight Generator
+      'portal.admin.getStudentSpotlight': actionAdminGetStudentSpotlight_,
+
+      // Feature 42: Admin Private Notes
+      'portal.admin.addStudentNote': actionAdminAddStudentNote_,
+      'portal.admin.getStudentNotes': actionAdminGetStudentNotes_,
+      'portal.admin.deleteStudentNote': actionAdminDeleteStudentNote_,
+
+      // Feature 43: Scheduled Portal Announcements
+      'portal.admin.upsertAnnouncement': actionAdminUpsertAnnouncement_,
+      'portal.admin.listAnnouncements': actionAdminListAnnouncements_,
+      'portal.admin.dismissAnnouncement': actionAdminDismissAnnouncement_,
+      'portal.getActiveAnnouncements': actionGetActiveAnnouncements_,
+
+      // Feature 44: Admin Broadcast Message
+      'portal.admin.broadcastMessage': actionAdminBroadcastMessage_,
+
+      // Feature 45: View-As-Student Preview
+      'portal.admin.getStudentPreview': actionAdminGetStudentPreview_
     };
 
     const handler = handlerMap[action];
