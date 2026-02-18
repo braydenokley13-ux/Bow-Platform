@@ -1,13 +1,90 @@
 "use client";
 
+import { useEffect, useState, useCallback } from "react";
 import { PageTitle } from "@/components/page-title";
-import { FetchPanel } from "@/components/fetch-panel";
+import { DataTable } from "@/components/data-table";
+import { EmptyState } from "@/components/empty-state";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
+import { FeedbackBanner } from "@/components/feedback-banner";
+import { apiFetch } from "@/lib/client-api";
+
+interface ActivityEvent {
+  ts: string;
+  event_type?: string;
+  action?: string;
+  label?: string;
+  track?: string;
+  module?: string;
+  xp_delta?: number;
+  points?: number;
+  source?: string;
+  note?: string;
+}
+
+interface HistoryPayload {
+  ok: boolean;
+  data: { events: ActivityEvent[] };
+}
 
 export default function HistoryPage() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [events, setEvents] = useState<ActivityEvent[]>([]);
+
+  const load = useCallback(async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await apiFetch<HistoryPayload>("/api/activity-history");
+      setEvents(res.data?.events ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load activity history");
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
   return (
     <div className="grid gap-14">
       <PageTitle title="My Activity History" subtitle="Claims, raffle entries, and notification events" />
-      <FetchPanel endpoint="/api/activity-history" title="Activity timeline" />
+
+      {error ? <FeedbackBanner kind="error">{error}</FeedbackBanner> : null}
+
+      {busy ? (
+        <LoadingSkeleton lines={6} />
+      ) : events.length === 0 ? (
+        <EmptyState title="No history yet" body="Your activity will appear here after you complete lessons and claim XP." />
+      ) : (
+        <section className="card" style={{ padding: 0 }}>
+          <DataTable headers={["Date", "Event", "Track", "XP", "Note"]} stickyHeader>
+            {events.map((ev, idx) => {
+              const xp = ev.xp_delta ?? ev.points ?? null;
+              const eventLabel = ev.label ?? ev.action ?? ev.event_type ?? "—";
+              return (
+                <tr key={`${ev.ts}-${idx}`}>
+                  <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>
+                    {new Date(ev.ts).toLocaleString()}
+                  </td>
+                  <td style={{ fontWeight: 500 }}>{eventLabel}</td>
+                  <td>{ev.track ?? "—"}</td>
+                  <td style={{ fontVariantNumeric: "tabular-nums" }}>
+                    {xp != null ? (
+                      <span style={{ color: xp >= 0 ? "var(--success, #16a34a)" : "var(--danger, #dc2626)", fontWeight: 600 }}>
+                        {xp >= 0 ? `+${xp}` : xp}
+                      </span>
+                    ) : "—"}
+                  </td>
+                  <td style={{ fontSize: 13, opacity: 0.65 }}>{ev.note ?? ev.source ?? "—"}</td>
+                </tr>
+              );
+            })}
+          </DataTable>
+        </section>
+      )}
     </div>
   );
 }
