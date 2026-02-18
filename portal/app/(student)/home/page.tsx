@@ -131,7 +131,7 @@ export default function StudentHomeFeedPage() {
                 <div className="pill">{action.kind}</div>
                 <div style={{ marginTop: 8, fontWeight: 700 }}>{action.title}</div>
                 <p style={{ margin: "6px 0 10px", color: "var(--muted)" }}>{action.subtitle}</p>
-                <Link href={action.href}>Open</Link>
+                <a href={action.href}>Open</a>
               </article>
             ))}
           </div>

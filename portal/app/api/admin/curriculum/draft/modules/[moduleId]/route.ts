@@ -7,7 +7,7 @@ const bodySchema = z.object({}).passthrough();
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ moduleId: string }> }) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const params = await ctx.params;
   const moduleId = String(params.moduleId || "").trim();

@@ -4,7 +4,7 @@ import { runPortalAction } from "@/lib/portal-route";
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const { id } = await ctx.params;
   const body = await readJsonBody<{ notes?: string }>(req);

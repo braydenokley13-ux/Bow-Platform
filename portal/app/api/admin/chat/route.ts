@@ -4,7 +4,7 @@ import { listChatMessages } from "@/lib/chat-service";
 
 export async function GET(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   try {
     const url = new URL(req.url);

@@ -12,7 +12,7 @@ const bodySchema = z.object({
 
 export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const parsed = bodySchema.safeParse(await req.json());
   if (!parsed.success) {
@@ -28,6 +28,6 @@ export async function POST(req: Request) {
 
 export async function GET() {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
   return runPortalAction({ action: "portal.getActiveRaffle", actor });
 }

@@ -18,7 +18,7 @@ const bodySchema = z.object({
 
 export async function GET(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
   const url = new URL(req.url);
   return runPortalAction({
     action: "portal.admin.listEvents",
@@ -31,7 +31,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const parsed = bodySchema.safeParse(await req.json());
   if (!parsed.success) {

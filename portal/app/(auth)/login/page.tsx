@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { firebaseAuth } from "@/lib/firebase-client";
+import { getFirebaseAuth } from "@/lib/firebase-client";
 import { PageTitle } from "@/components/page-title";
 
 export default function LoginPage() {
@@ -16,7 +16,11 @@ export default function LoginPage() {
     setBusy(true);
     setMessage("");
     try {
-      await signInWithEmailAndPassword(firebaseAuth, email.trim(), password);
+      const auth = getFirebaseAuth();
+      if (!auth) {
+        throw new Error("Firebase client config missing. Add NEXT_PUBLIC_FIREBASE_* environment variables.");
+      }
+      await signInWithEmailAndPassword(auth, email.trim(), password);
       setMessage("Login successful. You can now open dashboard pages.");
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Login failed");
