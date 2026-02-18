@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { onAuthStateChanged, signOut, type User } from "firebase/auth";
-import { firebaseAuth } from "@/lib/firebase-client";
+import { getFirebaseAuth } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/client-api";
 
 interface SessionPayload {
@@ -19,7 +19,9 @@ export function AuthStatus() {
   const [sessionMeta, setSessionMeta] = useState<string>("");
 
   useEffect(() => {
-    return onAuthStateChanged(firebaseAuth, (nextUser) => {
+    const auth = getFirebaseAuth();
+    if (!auth) return;
+    return onAuthStateChanged(auth, (nextUser) => {
       setUser(nextUser);
     });
   }, []);
@@ -61,7 +63,8 @@ export function AuthStatus() {
       {user ? (
         <button
           onClick={() => {
-            void signOut(firebaseAuth);
+            const auth = getFirebaseAuth();
+            if (auth) void signOut(auth);
           }}
           className="secondary"
           style={{ padding: "6px 10px", fontSize: 12 }}

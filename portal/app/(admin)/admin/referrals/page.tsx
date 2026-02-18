@@ -1,200 +1,156 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
-interface ReferralCode {
-  referral_code: string;
-  email: string;
-  created_at: string;
-  uses_count: number;
-}
-
-interface Redemption {
-  redemption_id: string;
-  referral_code: string;
+interface ReferralRow {
+  referral_id: string;
   referrer_email: string;
+  referrer_name: string;
   referred_email: string;
-  redeemed_at: string;
+  referred_name: string;
+  status: string;
   xp_awarded: number;
+  created_at: string;
 }
 
-interface ActivityPayload {
+interface AdminReferralsPayload {
   ok: boolean;
   data: {
-    referral_codes: ReferralCode[];
-    referral_redemptions: Redemption[];
+    referrals: ReferralRow[];
+    total_enrolled: number;
+    total_xp_awarded: number;
   };
 }
 
-export default function AdminReferralsPage() {
-  const [codes, setCodes] = useState<ReferralCode[]>([]);
-  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+const STATUS_COLOR: Record<string, string> = {
+  pending: "#c45c00",
+  enrolled: "#0d7a4f",
+  rewarded: "#1e4fb4",
+};
 
-  const [refCode, setRefCode] = useState("");
-  const [refEmail, setRefEmail] = useState("");
-  const [xpAmount, setXpAmount] = useState("500");
+export default function AdminReferralsPage() {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [payload, setPayload] = useState<AdminReferralsPayload | null>(null);
+  const [awarding, setAwarding] = useState<string | null>(null);
 
   async function load() {
     setBusy(true);
     setError(null);
     try {
-      const json = await apiFetch<ActivityPayload>("/api/admin/referrals/activity");
-      setCodes(Array.isArray(json.data?.referral_codes) ? json.data.referral_codes : []);
-      setRedemptions(Array.isArray(json.data?.referral_redemptions) ? json.data.referral_redemptions : []);
+      const json = await apiFetch<AdminReferralsPayload>("/api/admin/referrals");
+      setPayload(json);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load referral data");
+      setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
       setBusy(false);
     }
   }
 
-  useEffect(() => {
-    void load();
-  }, []);
-
-  async function onRedeem(e: FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError(null);
-    setMessage(null);
+  async function awardBonus(referralId: string) {
+    if (!confirm("Award referral XP bonus to this student? This will add XP and mark the referral as rewarded.")) return;
+    setAwarding(referralId);
     try {
-      await apiFetch("/api/admin/referrals/redeem", {
-        method: "POST",
-        json: {
-          referral_code: refCode.trim(),
-          referred_email: refEmail.trim().toLowerCase(),
-          xp_amount: Number(xpAmount)
-        }
-      });
-      setMessage("Referral redeemed — XP awarded to referrer.");
-      setRefCode("");
-      setRefEmail("");
-      setXpAmount("500");
-      await load();
+      await apiFetch("/api/admin/referrals", { method: "POST", body: JSON.stringify({ referral_id: referralId }) });
+      void load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to redeem referral");
+      alert(err instanceof Error ? err.message : "Failed to award bonus");
     } finally {
-      setSaving(false);
+      setAwarding(null);
     }
   }
 
+  useEffect(() => { void load(); }, []);
+
+  const referrals = payload?.data.referrals ?? [];
+
   return (
-    <div className="grid" style={{ gap: 14 }}>
-      <PageTitle title="Referral System" subtitle="Redeem referral codes and award XP bonuses to students who recruited friends" />
+    <div className="grid" style={{ gap: 20 }}>
+      <PageTitle title="Referral Tracking" subtitle="View student referrals and award XP bonuses when friends enroll." />
 
-      <form className="card" onSubmit={(e) => void onRedeem(e)} style={{ display: "grid", gap: 10, maxWidth: 560 }}>
-        <div style={{ fontWeight: 700, marginBottom: 4 }}>Redeem a referral</div>
-        <div className="grid grid-2">
-          <label>
-            Referral code
-            <input
-              value={refCode}
-              onChange={(e) => setRefCode(e.target.value)}
-              placeholder="REF_XXXXXXXXXXXXXX"
-              required
-            />
-          </label>
-          <label>
-            Referred student email
-            <input
-              type="email"
-              value={refEmail}
-              onChange={(e) => setRefEmail(e.target.value)}
-              placeholder="newstudent@example.com"
-              required
-            />
-          </label>
-        </div>
-        <label style={{ maxWidth: 200 }}>
-          XP bonus to award
-          <input
-            type="number"
-            min={0}
-            value={xpAmount}
-            onChange={(e) => setXpAmount(e.target.value)}
-          />
-        </label>
-        <button disabled={saving}>{saving ? "Redeeming..." : "Redeem referral"}</button>
-      </form>
+      {error && <div className="banner banner-error"><strong>Error:</strong> {error}</div>}
 
-      {error ? <div className="banner banner-error">{error}</div> : null}
-      {message ? <div className="banner banner-success">{message}</div> : null}
+      {/* Summary */}
+      {payload?.data && (
+        <section className="card" style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
+          <div>
+            <div className="kicker">Total Referrals</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "var(--brand)" }}>{referrals.length}</div>
+          </div>
+          <div>
+            <div className="kicker">Enrolled</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#0d7a4f" }}>{payload.data.total_enrolled}</div>
+          </div>
+          <div>
+            <div className="kicker">Total XP Awarded</div>
+            <div style={{ fontSize: 28, fontWeight: 800, color: "#1e4fb4" }}>{payload.data.total_xp_awarded.toLocaleString()}</div>
+          </div>
+          <button onClick={() => void load()} disabled={busy} className="secondary" style={{ marginLeft: "auto", alignSelf: "center" }}>
+            {busy ? "Loading…" : "Refresh"}
+          </button>
+        </section>
+      )}
 
-      <section className="card" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <button onClick={() => void load()} disabled={busy}>
-          {busy ? "Refreshing..." : "Refresh data"}
-        </button>
-        <span style={{ color: "var(--muted)", fontSize: 13 }}>
-          {codes.length} referral link(s) generated · {redemptions.length} redeemed
-        </span>
-      </section>
-
-      <section className="card table-wrap">
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>Referral links</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Student</th>
-              <th>Code</th>
-              <th>Uses</th>
-              <th>Created</th>
-            </tr>
-          </thead>
-          <tbody>
-            {codes.map((row) => (
-              <tr key={row.referral_code}>
-                <td>{row.email}</td>
-                <td style={{ fontFamily: "monospace", fontSize: 12 }}>{row.referral_code}</td>
-                <td>{row.uses_count}</td>
-                <td style={{ color: "var(--muted)", fontSize: 12 }}>{row.created_at}</td>
-              </tr>
-            ))}
-            {codes.length === 0 && (
-              <tr>
-                <td colSpan={4} style={{ color: "var(--muted)", textAlign: "center" }}>
-                  No referral links yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
-
-      <section className="card table-wrap">
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>Redemptions</div>
-        <table>
-          <thead>
-            <tr>
-              <th>Referrer</th>
-              <th>Referred</th>
-              <th>XP Awarded</th>
-              <th>Redeemed At</th>
-            </tr>
-          </thead>
-          <tbody>
-            {redemptions.map((row) => (
-              <tr key={row.redemption_id}>
-                <td>{row.referrer_email}</td>
-                <td>{row.referred_email}</td>
-                <td style={{ fontWeight: 700 }}>+{row.xp_awarded} XP</td>
-                <td style={{ color: "var(--muted)", fontSize: 12 }}>{row.redeemed_at}</td>
-              </tr>
-            ))}
-            {redemptions.length === 0 && (
-              <tr>
-                <td colSpan={4} style={{ color: "var(--muted)", textAlign: "center" }}>
-                  No redemptions yet.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+      {/* Referrals Table */}
+      <section className="card" style={{ display: "grid", gap: 12 }}>
+        <h2 style={{ margin: 0, fontSize: 18 }}>All Referrals</h2>
+        {referrals.length === 0 ? (
+          <p style={{ color: "var(--muted)", margin: 0 }}>No referrals recorded yet.</p>
+        ) : (
+          <div className="table-wrap">
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid var(--border)" }}>
+                  {["Referrer", "Referred Friend", "Status", "XP Awarded", "Date", "Action"].map((h) => (
+                    <th key={h} style={{ textAlign: "left", padding: "6px 8px", color: "var(--muted)", fontWeight: 600 }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {referrals.map((r) => (
+                  <tr key={r.referral_id} style={{ borderBottom: "1px solid var(--border)" }}>
+                    <td style={{ padding: "8px 8px" }}>
+                      <div style={{ fontWeight: 600 }}>{r.referrer_name}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{r.referrer_email}</div>
+                    </td>
+                    <td style={{ padding: "8px 8px" }}>
+                      <div style={{ fontWeight: 600 }}>{r.referred_name || "—"}</div>
+                      <div style={{ fontSize: 12, color: "var(--muted)" }}>{r.referred_email}</div>
+                    </td>
+                    <td style={{ padding: "8px 8px" }}>
+                      <span className="pill" style={{ color: STATUS_COLOR[r.status] ?? "var(--muted)", borderColor: (STATUS_COLOR[r.status] ?? "var(--border)") + "55" }}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: "8px 8px", fontWeight: r.xp_awarded > 0 ? 700 : 400, color: r.xp_awarded > 0 ? "#1e4fb4" : "var(--muted)" }}>
+                      {r.xp_awarded > 0 ? `+${r.xp_awarded.toLocaleString()} XP` : "—"}
+                    </td>
+                    <td style={{ padding: "8px 8px", color: "var(--muted)", fontSize: 13 }}>
+                      {new Date(r.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}
+                    </td>
+                    <td style={{ padding: "8px 8px" }}>
+                      {r.status === "enrolled" ? (
+                        <button
+                          onClick={() => void awardBonus(r.referral_id)}
+                          disabled={awarding === r.referral_id}
+                          style={{ fontSize: 12, padding: "4px 10px" }}
+                        >
+                          {awarding === r.referral_id ? "…" : "Award XP Bonus"}
+                        </button>
+                      ) : (
+                        <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                          {r.status === "rewarded" ? "✓ Rewarded" : "Awaiting enrollment"}
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </div>
   );

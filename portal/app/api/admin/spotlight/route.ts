@@ -1,18 +1,12 @@
-import { badRequest } from "@/lib/api-response";
 import { requireAdminActor } from "@/lib/route-auth";
 import { runPortalAction } from "@/lib/portal-route";
+import { badRequest } from "@/lib/api-response";
 
-export async function GET(req: Request) {
+export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
-
-  const { searchParams } = new URL(req.url);
-  const email = searchParams.get("email") ?? "";
-  if (!email) return badRequest("email query param is required", "MISSING_EMAIL");
-
-  return runPortalAction({
-    action: "portal.admin.getStudentSpotlight",
-    actor,
-    data: { email }
-  });
+  if (error || !actor) return error!;
+  let body: { student_email?: string };
+  try { body = await req.json(); } catch { return badRequest("Invalid JSON"); }
+  if (!body.student_email) return badRequest("student_email required");
+  return runPortalAction({ action: "portal.admin.generateSpotlight", actor, data: body });
 }

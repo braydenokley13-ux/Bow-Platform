@@ -5411,522 +5411,6 @@ function actionActivateInvite_(payload) {
   return portalErr_('INVITE_NOT_FOUND', 'Invite not found.', null);
 }
 
-/* =====================================================================
- * FEATURE 40 — Referral / Invite System
- * ===================================================================== */
-
-function actionGetMyReferralLink_(payload) {
-  const email = assertActorEmail_(payload);
-
-  const d = readSheet('Referral_Codes');
-  for (let i = 0; i < d.rows.length; i++) {
-    const em = String(getRowValue(d.rows[i], d, 'email', '')).toLowerCase().trim();
-    if (em === email) {
-      return portalOk_('REFERRAL_LINK_OK', 'Referral code retrieved.', {
-        referral_code: String(getRowValue(d.rows[i], d, 'referral_code', '')),
-        uses_count: Number(getRowValue(d.rows[i], d, 'uses_count', 0)) || 0,
-        created_at: getRowValue(d.rows[i], d, 'created_at', '')
-      });
-    }
-  }
-
-  // Create a new referral code for this student.
-  const code = 'REF_' + Utilities.getUuid().replace(/-/g, '').substring(0, 12).toUpperCase();
-  appendObjectRow('Referral_Codes', {
-    referral_code: code,
-    email: email,
-    created_at: nowIso_(),
-    uses_count: 0
-  });
-
-  return portalOk_('REFERRAL_LINK_CREATED', 'Referral code created.', {
-    referral_code: code,
-    uses_count: 0,
-    created_at: nowIso_()
-  });
-}
-
-function actionAdminRedeemReferral_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const referralCode = String(data.referral_code || '').trim();
-  const referredEmail = String(data.referred_email || '').toLowerCase().trim();
-  const xpAmount = Math.max(0, Number(data.xp_amount || 500));
-
-  if (!referralCode || !referredEmail) {
-    return portalErr_('MISSING_FIELDS', 'referral_code and referred_email are required.', null);
-  }
-
-  // Look up the referral code to find the referrer.
-  const rc = readSheet('Referral_Codes');
-  let referrerEmail = '';
-  let rcRowNum = -1;
-  for (let i = 0; i < rc.rows.length; i++) {
-    const code = String(getRowValue(rc.rows[i], rc, 'referral_code', '')).trim();
-    if (code !== referralCode) continue;
-    referrerEmail = String(getRowValue(rc.rows[i], rc, 'email', '')).toLowerCase().trim();
-    rcRowNum = i + 2;
-    break;
-  }
-
-  if (!referrerEmail) {
-    return portalErr_('INVALID_REFERRAL_CODE', 'Referral code not found.', null);
-  }
-
-  // Check for duplicate redemptions.
-  const rr = readSheet('Referral_Redemptions');
-  for (let i = 0; i < rr.rows.length; i++) {
-    const refEmail = String(getRowValue(rr.rows[i], rr, 'referred_email', '')).toLowerCase().trim();
-    if (refEmail === referredEmail) {
-      return portalErr_('ALREADY_REDEEMED', 'This referred email has already been redeemed.', null);
-    }
-  }
-
-  const redemptionId = generateId_('RDM');
-  appendObjectRow('Referral_Redemptions', {
-    redemption_id: redemptionId,
-    referral_code: referralCode,
-    referrer_email: referrerEmail,
-    referred_email: referredEmail,
-    redeemed_at: nowIso_(),
-    xp_awarded: xpAmount
-  });
-
-  // Increment uses_count on the referral code row.
-  if (rcRowNum > 0) {
-    const curUses = Number(getRowValue(rc.rows[rcRowNum - 2], rc, 'uses_count', 0)) || 0;
-    setCellByKey(rc, rcRowNum, 'uses_count', curUses + 1);
-  }
-
-  // Award XP to the referrer via XP_Ledger.
-  appendObjectRow('XP_Ledger', {
-    ts: nowIso_(),
-    email: referrerEmail,
-    name: getDisplayNameByEmail_(referrerEmail),
-    track: 'REFERRAL',
-    outcome: 'REFERRAL_BONUS',
-    action: 'REFERRAL_REDEEMED',
-    module: '',
-    lesson: '',
-    points: xpAmount,
-    note: 'Referral bonus for enrolling ' + referredEmail,
-    key: 'referral:' + redemptionId,
-    ref_code: referralCode,
-    tier: '',
-    delta_reason: 'REFERRAL_BONUS',
-    source: 'admin'
-  });
-
-  addNotification_(referrerEmail, 'Referral bonus earned', 'You earned ' + xpAmount + ' XP because ' + referredEmail + ' enrolled using your referral link!', 'INFO');
-
-  logOps('portal_admin_redeem_referral_ok', {
-    referral_code: referralCode,
-    referrer_email: referrerEmail,
-    referred_email: referredEmail,
-    xp_awarded: xpAmount,
-    redemption_id: redemptionId
-  });
-
-  return portalOk_('REFERRAL_REDEEMED', 'Referral redeemed and XP awarded.', {
-    redemption_id: redemptionId,
-    referrer_email: referrerEmail,
-    referred_email: referredEmail,
-    xp_awarded: xpAmount
-  });
-}
-
-function actionAdminGetReferralActivity_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const codes = listSheetObjects_('Referral_Codes', false);
-  const redemptions = listSheetObjects_('Referral_Redemptions', false);
-
-  return portalOk_('REFERRAL_ACTIVITY_OK', 'Referral activity loaded.', {
-    referral_codes: codes,
-    referral_redemptions: redemptions
-  });
-}
-
-/* =====================================================================
- * FEATURE 41 — Student Spotlight Generator
- * ===================================================================== */
-
-function actionAdminGetStudentSpotlight_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const targetEmail = String(data.email || '').toLowerCase().trim();
-  if (!targetEmail) return portalErr_('MISSING_EMAIL', 'Student email is required.', null);
-
-  // Basic student info.
-  const pu = getPortalUser_(targetEmail);
-  const users = readSheet('Users');
-  let displayName = targetEmail.split('@')[0];
-  let xp = 0;
-  let level = 1;
-  let streakDays = 0;
-  for (let i = 0; i < users.rows.length; i++) {
-    const em = String(getRowValue(users.rows[i], users, 'email', '')).toLowerCase().trim();
-    if (em !== targetEmail) continue;
-    displayName = String(getRowValue(users.rows[i], users, 'display_name', '') || targetEmail.split('@')[0]);
-    xp = Number(getRowValue(users.rows[i], users, 'xp', 0)) || 0;
-    level = Number(getRowValue(users.rows[i], users, 'level', 1)) || 1;
-    streakDays = Number(getRowValue(users.rows[i], users, 'streak_days', 0)) || 0;
-    break;
-  }
-
-  // Badges.
-  const achievements = readSheet('Achievements');
-  const badges = [];
-  for (let i = 0; i < achievements.rows.length; i++) {
-    const em = String(getRowValue(achievements.rows[i], achievements, 'email', '')).toLowerCase().trim();
-    if (em !== targetEmail) continue;
-    badges.push(String(getRowValue(achievements.rows[i], achievements, 'badge_id', '')));
-  }
-
-  // League points this season.
-  let leaguePoints = 0;
-  const activeSeason = getActiveSeason_();
-  if (activeSeason) {
-    const lpl = readSheet('League_Points_Ledger');
-    for (let i = 0; i < lpl.rows.length; i++) {
-      const em = String(getRowValue(lpl.rows[i], lpl, 'email', '')).toLowerCase().trim();
-      const sid = String(getRowValue(lpl.rows[i], lpl, 'season_id', '')).trim();
-      if (em !== targetEmail || sid !== activeSeason.season_id) continue;
-      leaguePoints += Number(getRowValue(lpl.rows[i], lpl, 'delta_points', 0)) || 0;
-    }
-  }
-
-  // Best journal quote.
-  let bestQuote = '';
-  const journal = readSheet('Decision_Journal');
-  const journalEntries = [];
-  for (let i = 0; i < journal.rows.length; i++) {
-    const em = String(getRowValue(journal.rows[i], journal, 'email', '')).toLowerCase().trim();
-    if (em !== targetEmail) continue;
-    const status = String(getRowValue(journal.rows[i], journal, 'status', '')).toUpperCase();
-    if (status !== 'SCORED') continue;
-    const text = String(getRowValue(journal.rows[i], journal, 'decision_text', '') || '').trim();
-    if (text) journalEntries.push(text);
-  }
-  if (journalEntries.length > 0) {
-    bestQuote = journalEntries[journalEntries.length - 1].substring(0, 200);
-  }
-
-  // Claims count.
-  const xpLedger = readSheet('XP_Ledger');
-  let claimsCount = 0;
-  for (let i = 0; i < xpLedger.rows.length; i++) {
-    const em = String(getRowValue(xpLedger.rows[i], xpLedger, 'email', '')).toLowerCase().trim();
-    const action = String(getRowValue(xpLedger.rows[i], xpLedger, 'action', '')).toUpperCase();
-    if (em === targetEmail && action === 'CLAIM_ACCEPTED') claimsCount++;
-  }
-
-  return portalOk_('SPOTLIGHT_OK', 'Spotlight data loaded.', {
-    email: targetEmail,
-    display_name: displayName,
-    xp: xp,
-    level: level,
-    streak_days: streakDays,
-    badges: badges,
-    top_badge: badges.length > 0 ? badges[badges.length - 1] : null,
-    league_points: leaguePoints,
-    claims_count: claimsCount,
-    best_quote: bestQuote,
-    active_season: activeSeason ? activeSeason.title : null,
-    role: pu ? pu.role : 'STUDENT',
-    status: pu ? pu.status : 'ACTIVE'
-  });
-}
-
-/* =====================================================================
- * FEATURE 42 — Admin Private Notes on Students
- * ===================================================================== */
-
-function actionAdminAddStudentNote_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const studentEmail = String(data.student_email || '').toLowerCase().trim();
-  const body = String(data.body || '').trim();
-
-  if (!studentEmail || !body) {
-    return portalErr_('MISSING_FIELDS', 'student_email and body are required.', null);
-  }
-
-  const noteId = generateId_('NOTE');
-  appendObjectRow('Admin_Notes', {
-    note_id: noteId,
-    student_email: studentEmail,
-    author_email: String(payload.actorEmail || '').toLowerCase(),
-    body: body,
-    created_at: nowIso_()
-  });
-
-  logOps('portal_admin_note_added', {
-    note_id: noteId,
-    student_email: studentEmail,
-    author: String(payload.actorEmail || '').toLowerCase()
-  });
-
-  return portalOk_('NOTE_ADDED', 'Note added.', { note_id: noteId });
-}
-
-function actionAdminGetStudentNotes_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const filterEmail = String(data.student_email || '').toLowerCase().trim();
-
-  const d = readSheet('Admin_Notes');
-  const out = [];
-  for (let i = 0; i < d.rows.length; i++) {
-    const row = d.rows[i];
-    const stuEmail = String(getRowValue(row, d, 'student_email', '')).toLowerCase().trim();
-    if (filterEmail && stuEmail !== filterEmail) continue;
-    out.push({
-      note_id: String(getRowValue(row, d, 'note_id', '')),
-      student_email: stuEmail,
-      author_email: String(getRowValue(row, d, 'author_email', '')).toLowerCase(),
-      body: String(getRowValue(row, d, 'body', '')),
-      created_at: getRowValue(row, d, 'created_at', '')
-    });
-  }
-
-  // Return most recent first.
-  out.sort(function(a, b) { return sortAscDate_(b.created_at, a.created_at); });
-
-  return portalOk_('NOTES_OK', 'Notes loaded.', out);
-}
-
-function actionAdminDeleteStudentNote_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const noteId = String(data.note_id || '').trim();
-  if (!noteId) return portalErr_('MISSING_NOTE_ID', 'note_id is required.', null);
-
-  const d = readSheet('Admin_Notes');
-  for (let i = 0; i < d.rows.length; i++) {
-    const id = String(getRowValue(d.rows[i], d, 'note_id', '')).trim();
-    if (id !== noteId) continue;
-    d.sh.deleteRow(i + 2);
-    logOps('portal_admin_note_deleted', { note_id: noteId, actor: String(payload.actorEmail || '').toLowerCase() });
-    return portalOk_('NOTE_DELETED', 'Note deleted.', { note_id: noteId });
-  }
-
-  return portalErr_('NOTE_NOT_FOUND', 'Note not found.', null);
-}
-
-/* =====================================================================
- * FEATURE 43 — Scheduled Portal Announcements
- * ===================================================================== */
-
-function actionAdminUpsertAnnouncement_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const existingId = String(data.announcement_id || '').trim();
-  const title = String(data.title || '').trim();
-  const body = String(data.body || '').trim();
-  const showAt = String(data.show_at || '').trim();
-  const autoHideAt = String(data.auto_hide_at || '').trim();
-
-  if (!title || !body) {
-    return portalErr_('MISSING_FIELDS', 'title and body are required.', null);
-  }
-
-  const d = readSheet('Portal_Announcements');
-
-  if (existingId) {
-    for (let i = 0; i < d.rows.length; i++) {
-      const id = String(getRowValue(d.rows[i], d, 'announcement_id', '')).trim();
-      if (id !== existingId) continue;
-      if (title) setCellByKey(d, i + 2, 'title', title);
-      if (body) setCellByKey(d, i + 2, 'body', body);
-      if (showAt !== undefined) setCellByKey(d, i + 2, 'show_at', showAt);
-      if (autoHideAt !== undefined) setCellByKey(d, i + 2, 'auto_hide_at', autoHideAt);
-      if (data.status) setCellByKey(d, i + 2, 'status', String(data.status).toUpperCase());
-      return portalOk_('ANNOUNCEMENT_UPDATED', 'Announcement updated.', { announcement_id: existingId });
-    }
-    return portalErr_('ANNOUNCEMENT_NOT_FOUND', 'Announcement not found.', null);
-  }
-
-  const announcementId = generateId_('ANN');
-  appendObjectRow('Portal_Announcements', {
-    announcement_id: announcementId,
-    title: title,
-    body: body,
-    show_at: showAt || nowIso_(),
-    auto_hide_at: autoHideAt || '',
-    status: 'ACTIVE',
-    created_by: String(payload.actorEmail || '').toLowerCase(),
-    created_at: nowIso_()
-  });
-
-  logOps('portal_admin_announcement_created', {
-    announcement_id: announcementId,
-    title: title,
-    actor: String(payload.actorEmail || '').toLowerCase()
-  });
-
-  return portalOk_('ANNOUNCEMENT_CREATED', 'Announcement created.', { announcement_id: announcementId });
-}
-
-function actionAdminListAnnouncements_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const d = readSheet('Portal_Announcements');
-  const out = [];
-  for (let i = 0; i < d.rows.length; i++) {
-    const row = d.rows[i];
-    out.push({
-      announcement_id: String(getRowValue(row, d, 'announcement_id', '')),
-      title: String(getRowValue(row, d, 'title', '')),
-      body: String(getRowValue(row, d, 'body', '')),
-      show_at: getRowValue(row, d, 'show_at', ''),
-      auto_hide_at: getRowValue(row, d, 'auto_hide_at', ''),
-      status: String(getRowValue(row, d, 'status', 'ACTIVE')).toUpperCase(),
-      created_by: String(getRowValue(row, d, 'created_by', '')).toLowerCase(),
-      created_at: getRowValue(row, d, 'created_at', '')
-    });
-  }
-  out.sort(function(a, b) { return sortAscDate_(b.created_at, a.created_at); });
-  return portalOk_('ANNOUNCEMENTS_OK', 'Announcements loaded.', out);
-}
-
-function actionAdminDismissAnnouncement_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const announcementId = String(data.announcement_id || '').trim();
-  if (!announcementId) return portalErr_('MISSING_ID', 'announcement_id is required.', null);
-
-  const d = readSheet('Portal_Announcements');
-  for (let i = 0; i < d.rows.length; i++) {
-    const id = String(getRowValue(d.rows[i], d, 'announcement_id', '')).trim();
-    if (id !== announcementId) continue;
-    setCellByKey(d, i + 2, 'status', 'DISMISSED');
-    logOps('portal_admin_announcement_dismissed', { announcement_id: announcementId });
-    return portalOk_('ANNOUNCEMENT_DISMISSED', 'Announcement dismissed.', { announcement_id: announcementId });
-  }
-
-  return portalErr_('ANNOUNCEMENT_NOT_FOUND', 'Announcement not found.', null);
-}
-
-function actionGetActiveAnnouncements_(payload) {
-  assertActorEmail_(payload);
-  const now = new Date();
-
-  const d = readSheet('Portal_Announcements');
-  const out = [];
-  for (let i = 0; i < d.rows.length; i++) {
-    const row = d.rows[i];
-    const status = String(getRowValue(row, d, 'status', '')).toUpperCase();
-    if (status !== 'ACTIVE') continue;
-
-    const showAt = getRowValue(row, d, 'show_at', '');
-    if (showAt) {
-      const showDate = toDate_(showAt);
-      if (showDate && showDate > now) continue;
-    }
-
-    const autoHideAt = getRowValue(row, d, 'auto_hide_at', '');
-    if (autoHideAt) {
-      const hideDate = toDate_(autoHideAt);
-      if (hideDate && hideDate < now) continue;
-    }
-
-    out.push({
-      announcement_id: String(getRowValue(row, d, 'announcement_id', '')),
-      title: String(getRowValue(row, d, 'title', '')),
-      body: String(getRowValue(row, d, 'body', '')),
-      show_at: showAt,
-      created_at: getRowValue(row, d, 'created_at', '')
-    });
-  }
-
-  out.sort(function(a, b) { return sortAscDate_(b.created_at, a.created_at); });
-  return portalOk_('ANNOUNCEMENTS_OK', 'Active announcements loaded.', out);
-}
-
-/* =====================================================================
- * FEATURE 44 — Admin Broadcast Message
- * ===================================================================== */
-
-function actionAdminBroadcastMessage_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const title = String(data.title || '').trim();
-  const body = String(data.body || '').trim();
-  const kind = String(data.kind || 'INFO').toUpperCase();
-
-  if (!title || !body) {
-    return portalErr_('MISSING_FIELDS', 'title and body are required.', null);
-  }
-
-  // Get all active students.
-  const pu = readSheet('Portal_Users');
-  const recipients = [];
-  for (let i = 0; i < pu.rows.length; i++) {
-    const row = pu.rows[i];
-    const email = String(getRowValue(row, pu, 'email', '')).toLowerCase().trim();
-    const role = String(getRowValue(row, pu, 'role', '')).toUpperCase();
-    const status = String(getRowValue(row, pu, 'status', '')).toUpperCase();
-    if (!email || role !== 'STUDENT' || status === 'SUSPENDED') continue;
-    recipients.push(email);
-  }
-
-  for (let i = 0; i < recipients.length; i++) {
-    addNotification_(recipients[i], title, body, kind);
-  }
-
-  logOps('portal_admin_broadcast_sent', {
-    title: title,
-    actor: String(payload.actorEmail || '').toLowerCase(),
-    recipient_count: recipients.length
-  });
-
-  return portalOk_('BROADCAST_SENT', 'Broadcast message sent to ' + recipients.length + ' student(s).', {
-    recipient_count: recipients.length,
-    title: title
-  });
-}
-
-/* =====================================================================
- * FEATURE 45 — View-As-Student (Admin Preview Mode)
- * ===================================================================== */
-
-function actionAdminGetStudentPreview_(payload) {
-  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
-
-  const data = payload.data || {};
-  const targetEmail = String(data.email || '').toLowerCase().trim();
-  if (!targetEmail) return portalErr_('MISSING_EMAIL', 'email is required.', null);
-
-  // Fetch core student data by impersonating with a synthesized payload.
-  const studentPayload = {
-    actorEmail: targetEmail,
-    actorRole: 'STUDENT',
-    data: {}
-  };
-
-  const dashboard = actionGetDashboard_(studentPayload);
-  const quests = actionGetMyQuests_(studentPayload);
-  const notifications = actionGetNotifications_({ actorEmail: targetEmail, actorRole: 'STUDENT', data: { limit: 20 } });
-  const leagueStandings = actionGetLeagueStandings_(studentPayload);
-
-  return portalOk_('PREVIEW_OK', 'Student preview data loaded.', {
-    target_email: targetEmail,
-    dashboard: dashboard.data,
-    quests: quests.data,
-    recent_notifications: notifications.data,
-    league_standings: leagueStandings.data
-  });
-}
-
 function handlePortalActionRequest_(payload) {
   const startedAt = Date.now();
 
@@ -6090,31 +5574,30 @@ function handlePortalActionRequest_(payload) {
       'portal.admin.createRaffle': actionAdminCreateRaffle_,
       'portal.admin.closeDrawRaffle': actionAdminCloseDrawRaffle_,
       'portal.admin.getAuditLog': actionAdminAuditLog_,
-
-      // Feature 40: Referral / Invite System
-      'portal.getMyReferralLink': actionGetMyReferralLink_,
-      'portal.admin.redeemReferral': actionAdminRedeemReferral_,
-      'portal.admin.getReferralActivity': actionAdminGetReferralActivity_,
-
-      // Feature 41: Student Spotlight Generator
-      'portal.admin.getStudentSpotlight': actionAdminGetStudentSpotlight_,
-
+      // Feature 38: Session Records Wall
+      'portal.getSessionRecords': actionGetSessionRecords_,
+      // Feature 39: XP Rewards Catalog
+      'portal.getRewardsCatalog': actionGetRewardsCatalog_,
+      'portal.redeemReward': actionRedeemReward_,
+      'portal.admin.listRewards': actionAdminListRewards_,
+      'portal.admin.upsertReward': actionAdminUpsertReward_,
+      'portal.admin.fulfillRedemption': actionAdminFulfillRedemption_,
+      // Feature 40: Referral System
+      'portal.getReferralInfo': actionGetReferralInfo_,
+      'portal.admin.listReferrals': actionAdminListReferrals_,
+      'portal.admin.awardReferralBonus': actionAdminAwardReferralBonus_,
+      // Feature 41: Student Spotlight
+      'portal.admin.generateSpotlight': actionAdminGenerateSpotlight_,
       // Feature 42: Admin Private Notes
-      'portal.admin.addStudentNote': actionAdminAddStudentNote_,
-      'portal.admin.getStudentNotes': actionAdminGetStudentNotes_,
-      'portal.admin.deleteStudentNote': actionAdminDeleteStudentNote_,
-
-      // Feature 43: Scheduled Portal Announcements
-      'portal.admin.upsertAnnouncement': actionAdminUpsertAnnouncement_,
-      'portal.admin.listAnnouncements': actionAdminListAnnouncements_,
-      'portal.admin.dismissAnnouncement': actionAdminDismissAnnouncement_,
+      'portal.admin.getNotes': actionAdminGetNotes_,
+      'portal.admin.saveNote': actionAdminSaveNote_,
+      'portal.admin.deleteNote': actionAdminDeleteNote_,
+      // Feature 43: Scheduled Announcements
       'portal.getActiveAnnouncements': actionGetActiveAnnouncements_,
-
-      // Feature 44: Admin Broadcast Message
-      'portal.admin.broadcastMessage': actionAdminBroadcastMessage_,
-
-      // Feature 45: View-As-Student Preview
-      'portal.admin.getStudentPreview': actionAdminGetStudentPreview_
+      'portal.dismissAnnouncement': actionDismissAnnouncement_,
+      'portal.admin.listAnnouncements': actionAdminListAnnouncements_,
+      'portal.admin.upsertAnnouncement': actionAdminUpsertAnnouncement_,
+      'portal.admin.deleteAnnouncement': actionAdminDeleteAnnouncement_
     };
 
     const handler = handlerMap[action];
@@ -6164,4 +5647,856 @@ function handlePortalActionRequest_(payload) {
 
     return portalErr_('PORTAL_ACTION_ERROR', msg, null);
   }
+}
+
+/* ============================================================
+ * FEATURE 38: SESSION RECORDS WALL
+ * ============================================================ */
+
+function actionGetSessionRecords_(payload) {
+  const email = assertActorEmail_(payload);
+
+  // ── Class Records ────────────────────────────────────────────
+  // 1. Highest single-week XP
+  var xpData = readSheet('XP_Ledger');
+  var weeklyMap = {};
+  for (var i = 0; i < xpData.rows.length; i++) {
+    var row = xpData.rows[i];
+    var em = String(getRowValue(row, xpData, 'email', '')).toLowerCase().trim();
+    var pts = asNumber_(getRowValue(row, xpData, 'points', 0), 0);
+    var ts = String(getRowValue(row, xpData, 'ts', '') || getRowValue(row, xpData, 'timestamp', ''));
+    if (!ts || pts <= 0) continue;
+    var d = new Date(ts);
+    if (isNaN(d.getTime())) continue;
+    // ISO week key: YYYY-Www
+    var jan4 = new Date(d.getFullYear(), 0, 4);
+    var dayOfYear = (d - new Date(d.getFullYear(), 0, 0)) / 86400000;
+    var weekNum = Math.ceil((dayOfYear + jan4.getDay()) / 7);
+    var wk = d.getFullYear() + '-W' + String(weekNum).padStart(2, '0');
+    var k = em + '|' + wk;
+    weeklyMap[k] = (weeklyMap[k] || { em: em, wk: wk, pts: 0 });
+    weeklyMap[k].pts += pts;
+  }
+  var bestWeeklyXp = { email: '', value: 0, week: '' };
+  Object.keys(weeklyMap).forEach(function(k) {
+    var v = weeklyMap[k];
+    if (v.pts > bestWeeklyXp.value) {
+      bestWeeklyXp = { email: v.em, value: v.pts, week: v.wk };
+    }
+  });
+  var myBestWeeklyXp = 0;
+  Object.keys(weeklyMap).forEach(function(k) {
+    if (weeklyMap[k].em === email && weeklyMap[k].pts > myBestWeeklyXp) {
+      myBestWeeklyXp = weeklyMap[k].pts;
+    }
+  });
+
+  // 2. Longest streak (from Users sheet)
+  var usersData = readSheet('Users');
+  var bestStreak = { email: '', value: 0 };
+  var myStreak = 0;
+  for (var j = 0; j < usersData.rows.length; j++) {
+    var urow = usersData.rows[j];
+    var uem = String(getRowValue(urow, usersData, 'email', '')).toLowerCase().trim();
+    var streak = asNumber_(getRowValue(urow, usersData, 'streak_days', 0), 0);
+    if (streak > bestStreak.value) {
+      bestStreak = { email: uem, value: streak };
+    }
+    if (uem === email) myStreak = streak;
+  }
+
+  // 3. Most shoutouts (kudos received)
+  var kudosData = null;
+  try { kudosData = readSheet('Kudos'); } catch (e) { kudosData = null; }
+  var kudosCount = {};
+  if (kudosData) {
+    for (var ki = 0; ki < kudosData.rows.length; ki++) {
+      var krow = kudosData.rows[ki];
+      var toEm = String(getRowValue(krow, kudosData, 'to_email', '') || getRowValue(krow, kudosData, 'recipient_email', '')).toLowerCase().trim();
+      if (toEm) kudosCount[toEm] = (kudosCount[toEm] || 0) + 1;
+    }
+  }
+  var bestKudos = { email: '', value: 0 };
+  Object.keys(kudosCount).forEach(function(em) {
+    if (kudosCount[em] > bestKudos.value) bestKudos = { email: em, value: kudosCount[em] };
+  });
+  var myKudos = kudosCount[email] || 0;
+
+  // 4. Fastest assignment submission (hours from assignment open to submission)
+  var assignData = null;
+  var subData = null;
+  try { assignData = readSheet('Assignments'); } catch (e) { assignData = null; }
+  try { subData = readSheet('Assignment_Submissions'); } catch (e) { subData = null; }
+  var bestFastHours = { email: '', value: null };
+  var myFastHours = null;
+  if (assignData && subData) {
+    var assignMap = {};
+    for (var ai = 0; ai < assignData.rows.length; ai++) {
+      var ar = assignData.rows[ai];
+      var aid = String(getRowValue(ar, assignData, 'assignment_id', '')).trim();
+      var openedAt = String(getRowValue(ar, assignData, 'created_at', '') || getRowValue(ar, assignData, 'opens_at', '')).trim();
+      if (aid && openedAt) assignMap[aid] = openedAt;
+    }
+    for (var si = 0; si < subData.rows.length; si++) {
+      var sr = subData.rows[si];
+      var sEmail = String(getRowValue(sr, subData, 'email', '')).toLowerCase().trim();
+      var sAssignId = String(getRowValue(sr, subData, 'assignment_id', '')).trim();
+      var submittedAt = String(getRowValue(sr, subData, 'completed_at', '') || getRowValue(sr, subData, 'submitted_at', '')).trim();
+      var openTs = assignMap[sAssignId];
+      if (!openTs || !submittedAt) continue;
+      var openD = new Date(openTs);
+      var subD = new Date(submittedAt);
+      if (isNaN(openD.getTime()) || isNaN(subD.getTime())) continue;
+      var hours = (subD - openD) / 3600000;
+      if (hours < 0) continue;
+      if (bestFastHours.value === null || hours < bestFastHours.value) {
+        bestFastHours = { email: sEmail, value: hours };
+      }
+      if (sEmail === email && (myFastHours === null || hours < myFastHours)) {
+        myFastHours = hours;
+      }
+    }
+  }
+
+  function firstNameOf(em) {
+    var ud = readSheet('Users');
+    for (var ui = 0; ui < ud.rows.length; ui++) {
+      var ur = ud.rows[ui];
+      if (String(getRowValue(ur, ud, 'email', '')).toLowerCase().trim() === em) {
+        var dn = String(getRowValue(ur, ud, 'display_name', '') || '').trim();
+        return dn ? dn.split(' ')[0] : em.split('@')[0];
+      }
+    }
+    return em.split('@')[0];
+  }
+
+  return portalOk_('RECORDS_OK', 'Records loaded.', {
+    class_records: {
+      highest_weekly_xp: {
+        holder: bestWeeklyXp.email ? firstNameOf(bestWeeklyXp.email) : null,
+        value: bestWeeklyXp.value,
+        achieved_at: bestWeeklyXp.week
+      },
+      longest_checkin_streak: {
+        holder: bestStreak.email ? firstNameOf(bestStreak.email) : null,
+        value: bestStreak.value,
+        achieved_at: null
+      },
+      most_shoutouts: {
+        holder: bestKudos.email ? firstNameOf(bestKudos.email) : null,
+        value: bestKudos.value,
+        achieved_at: null
+      },
+      fastest_submission_hours: {
+        holder: bestFastHours.email ? firstNameOf(bestFastHours.email) : null,
+        value: bestFastHours.value,
+        achieved_at: null
+      }
+    },
+    personal_bests: {
+      highest_weekly_xp: { value: myBestWeeklyXp },
+      longest_checkin_streak: { value: myStreak },
+      most_shoutouts: { value: myKudos },
+      fastest_submission_hours: { value: myFastHours }
+    }
+  });
+}
+
+/* ============================================================
+ * FEATURE 39: XP REWARDS CATALOG
+ * ============================================================ */
+
+function ensureRewardsCatalogSheet_() {
+  ensureSheetWithHeaders('Rewards_Catalog', ['reward_id','title','description','xp_cost','category','available','icon','created_at','created_by']);
+  ensureSheetWithHeaders('Reward_Redemptions', ['redemption_id','reward_id','reward_title','student_email','xp_cost','status','redeemed_at','fulfilled_at','fulfillment_note']);
+}
+
+function actionGetRewardsCatalog_(payload) {
+  ensureRewardsCatalogSheet_();
+  const email = assertActorEmail_(payload);
+
+  var catData = readSheet('Rewards_Catalog');
+  var catalog = [];
+  for (var i = 0; i < catData.rows.length; i++) {
+    var row = catData.rows[i];
+    var avail = String(getRowValue(row, catData, 'available', 'TRUE')).toUpperCase();
+    catalog.push({
+      reward_id: String(getRowValue(row, catData, 'reward_id', '')),
+      title: String(getRowValue(row, catData, 'title', '')),
+      description: String(getRowValue(row, catData, 'description', '')),
+      xp_cost: asNumber_(getRowValue(row, catData, 'xp_cost', 0), 0),
+      category: String(getRowValue(row, catData, 'category', 'general')),
+      available: avail === 'TRUE' || avail === '1' || avail === 'YES',
+      icon: String(getRowValue(row, catData, 'icon', '🎁'))
+    });
+  }
+
+  // Current XP for this student
+  var xpData = readSheet('XP_Ledger');
+  var totalXp = 0;
+  for (var xi = 0; xi < xpData.rows.length; xi++) {
+    var xr = xpData.rows[xi];
+    if (String(getRowValue(xr, xpData, 'email', '')).toLowerCase().trim() === email) {
+      totalXp += asNumber_(getRowValue(xr, xpData, 'points', 0), 0);
+    }
+  }
+
+  var redData = readSheet('Reward_Redemptions');
+  var myRedemptions = [];
+  for (var ri = 0; ri < redData.rows.length; ri++) {
+    var rr = redData.rows[ri];
+    if (String(getRowValue(rr, redData, 'student_email', '')).toLowerCase().trim() === email) {
+      myRedemptions.push({
+        redemption_id: String(getRowValue(rr, redData, 'redemption_id', '')),
+        reward_id: String(getRowValue(rr, redData, 'reward_id', '')),
+        reward_title: String(getRowValue(rr, redData, 'reward_title', '')),
+        status: String(getRowValue(rr, redData, 'status', 'pending')),
+        redeemed_at: getRowValue(rr, redData, 'redeemed_at', '')
+      });
+    }
+  }
+  myRedemptions.reverse();
+
+  return portalOk_('REWARDS_OK', 'Rewards loaded.', {
+    catalog: catalog,
+    my_xp: totalXp,
+    my_redemptions: myRedemptions
+  });
+}
+
+function actionRedeemReward_(payload) {
+  const email = assertActorEmail_(payload);
+  const data = payload.data || {};
+  const rewardId = String(data.reward_id || '').trim();
+  if (!rewardId) return portalErr_('MISSING_REWARD_ID', 'reward_id required.', null);
+
+  ensureRewardsCatalogSheet_();
+
+  var catData = readSheet('Rewards_Catalog');
+  var reward = null;
+  for (var i = 0; i < catData.rows.length; i++) {
+    var row = catData.rows[i];
+    if (String(getRowValue(row, catData, 'reward_id', '')) === rewardId) {
+      reward = {
+        title: String(getRowValue(row, catData, 'title', '')),
+        xp_cost: asNumber_(getRowValue(row, catData, 'xp_cost', 0), 0),
+        available: String(getRowValue(row, catData, 'available', 'TRUE')).toUpperCase()
+      };
+      break;
+    }
+  }
+  if (!reward) return portalErr_('REWARD_NOT_FOUND', 'Reward not found.', null);
+  if (reward.available !== 'TRUE' && reward.available !== '1' && reward.available !== 'YES') {
+    return portalErr_('REWARD_UNAVAILABLE', 'This reward is not currently available.', null);
+  }
+
+  // Check XP balance
+  var xpData = readSheet('XP_Ledger');
+  var totalXp = 0;
+  for (var xi = 0; xi < xpData.rows.length; xi++) {
+    var xr = xpData.rows[xi];
+    if (String(getRowValue(xr, xpData, 'email', '')).toLowerCase().trim() === email) {
+      totalXp += asNumber_(getRowValue(xr, xpData, 'points', 0), 0);
+    }
+  }
+  if (totalXp < reward.xp_cost) {
+    return portalErr_('INSUFFICIENT_XP', 'Not enough XP to redeem this reward.', { have: totalXp, need: reward.xp_cost });
+  }
+
+  var redemptionId = generateId_('RDM');
+  appendObjectRow('Reward_Redemptions', {
+    redemption_id: redemptionId,
+    reward_id: rewardId,
+    reward_title: reward.title,
+    student_email: email,
+    xp_cost: reward.xp_cost,
+    status: 'pending',
+    redeemed_at: _now(),
+    fulfilled_at: '',
+    fulfillment_note: ''
+  });
+
+  // Deduct XP via negative ledger entry
+  appendObjectRow('XP_Ledger', {
+    ts: _now(),
+    email: email,
+    points: -reward.xp_cost,
+    action: 'REWARD_REDEMPTION',
+    note: 'Redeemed: ' + reward.title,
+    source: 'PORTAL',
+    key: 'RDM_' + redemptionId
+  });
+
+  return portalOk_('REDEEMED', 'Reward redeemed! Admin will fulfill it shortly.', { redemption_id: redemptionId });
+}
+
+function actionAdminListRewards_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  ensureRewardsCatalogSheet_();
+
+  var catData = readSheet('Rewards_Catalog');
+  var catalog = [];
+  for (var i = 0; i < catData.rows.length; i++) {
+    var row = catData.rows[i];
+    var avail = String(getRowValue(row, catData, 'available', 'TRUE')).toUpperCase();
+    catalog.push({
+      reward_id: String(getRowValue(row, catData, 'reward_id', '')),
+      title: String(getRowValue(row, catData, 'title', '')),
+      description: String(getRowValue(row, catData, 'description', '')),
+      xp_cost: asNumber_(getRowValue(row, catData, 'xp_cost', 0), 0),
+      category: String(getRowValue(row, catData, 'category', 'general')),
+      available: avail === 'TRUE' || avail === '1' || avail === 'YES',
+      icon: String(getRowValue(row, catData, 'icon', '🎁'))
+    });
+  }
+
+  var redData = readSheet('Reward_Redemptions');
+  var redemptions = [];
+  var usersData = readSheet('Users');
+  var nameMap = {};
+  for (var ui = 0; ui < usersData.rows.length; ui++) {
+    var ur = usersData.rows[ui];
+    var em = String(getRowValue(ur, usersData, 'email', '')).toLowerCase().trim();
+    nameMap[em] = String(getRowValue(ur, usersData, 'display_name', '') || em);
+  }
+  for (var ri = 0; ri < redData.rows.length; ri++) {
+    var rr = redData.rows[ri];
+    var sEmail = String(getRowValue(rr, redData, 'student_email', '')).toLowerCase().trim();
+    redemptions.push({
+      redemption_id: String(getRowValue(rr, redData, 'redemption_id', '')),
+      student_email: sEmail,
+      student_name: nameMap[sEmail] || sEmail,
+      reward_id: String(getRowValue(rr, redData, 'reward_id', '')),
+      reward_title: String(getRowValue(rr, redData, 'reward_title', '')),
+      xp_cost: asNumber_(getRowValue(rr, redData, 'xp_cost', 0), 0),
+      status: String(getRowValue(rr, redData, 'status', 'pending')),
+      redeemed_at: getRowValue(rr, redData, 'redeemed_at', ''),
+      fulfilled_at: getRowValue(rr, redData, 'fulfilled_at', '')
+    });
+  }
+  redemptions.reverse();
+
+  return portalOk_('REWARDS_ADMIN_OK', 'Loaded.', { catalog: catalog, redemptions: redemptions });
+}
+
+function actionAdminUpsertReward_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const actorEmail = assertActorEmail_(payload);
+  const data = payload.data || {};
+  ensureRewardsCatalogSheet_();
+
+  var rewardId = String(data.reward_id || '').trim();
+  var catData = readSheet('Rewards_Catalog');
+  var existingRowNum = -1;
+  for (var i = 0; i < catData.rows.length; i++) {
+    if (String(getRowValue(catData.rows[i], catData, 'reward_id', '')) === rewardId) {
+      existingRowNum = i + 2; // 1-indexed + header
+      break;
+    }
+  }
+
+  var availStr = (data.available === false || data.available === 'false' || data.available === 'no' || data.available === 'NO') ? 'FALSE' : 'TRUE';
+
+  if (existingRowNum > 0) {
+    // Update existing row
+    setCellByKey(catData, existingRowNum, 'title', String(data.title || ''));
+    setCellByKey(catData, existingRowNum, 'description', String(data.description || ''));
+    setCellByKey(catData, existingRowNum, 'xp_cost', asNumber_(data.xp_cost, 0));
+    setCellByKey(catData, existingRowNum, 'category', String(data.category || 'general'));
+    setCellByKey(catData, existingRowNum, 'available', availStr);
+    setCellByKey(catData, existingRowNum, 'icon', String(data.icon || '🎁'));
+  } else {
+    rewardId = generateId_('RWD');
+    appendObjectRow('Rewards_Catalog', {
+      reward_id: rewardId,
+      title: String(data.title || ''),
+      description: String(data.description || ''),
+      xp_cost: asNumber_(data.xp_cost, 0),
+      category: String(data.category || 'general'),
+      available: availStr,
+      icon: String(data.icon || '🎁'),
+      created_at: _now(),
+      created_by: actorEmail
+    });
+  }
+
+  return portalOk_('REWARD_SAVED', 'Reward saved.', { reward_id: rewardId });
+}
+
+function actionAdminFulfillRedemption_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const redemptionId = String(data.redemption_id || '').trim();
+  if (!redemptionId) return portalErr_('MISSING_ID', 'redemption_id required.', null);
+
+  ensureRewardsCatalogSheet_();
+  var redData = readSheet('Reward_Redemptions');
+  for (var i = 0; i < redData.rows.length; i++) {
+    if (String(getRowValue(redData.rows[i], redData, 'redemption_id', '')) === redemptionId) {
+      var rowNum = i + 2;
+      setCellByKey(redData, rowNum, 'status', 'fulfilled');
+      setCellByKey(redData, rowNum, 'fulfilled_at', _now());
+      if (data.note) setCellByKey(redData, rowNum, 'fulfillment_note', String(data.note));
+      return portalOk_('FULFILLED', 'Redemption marked as fulfilled.', { redemption_id: redemptionId });
+    }
+  }
+  return portalErr_('NOT_FOUND', 'Redemption not found.', null);
+}
+
+/* ============================================================
+ * FEATURE 40: REFERRAL SYSTEM
+ * ============================================================ */
+
+function ensureReferralsSheet_() {
+  ensureSheetWithHeaders('Referrals', ['referral_id','referrer_email','referred_email','referred_name','status','xp_awarded','created_at']);
+}
+
+var REFERRAL_XP_BONUS = 500;
+var REFERRAL_BASE_URL = 'https://portal.bowsportscapital.com';
+
+function actionGetReferralInfo_(payload) {
+  ensureReferralsSheet_();
+  const email = assertActorEmail_(payload);
+
+  // Derive referral code from email (simple hash)
+  var code = 'REF_' + Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, email)).replace(/[^A-Za-z0-9]/g, '').substring(0, 10).toUpperCase();
+  var url = REFERRAL_BASE_URL + '/onboarding?ref=' + code;
+
+  var refData = readSheet('Referrals');
+  var myReferrals = [];
+  var totalXpEarned = 0;
+  for (var i = 0; i < refData.rows.length; i++) {
+    var row = refData.rows[i];
+    if (String(getRowValue(row, refData, 'referrer_email', '')).toLowerCase().trim() === email) {
+      var xpAw = asNumber_(getRowValue(row, refData, 'xp_awarded', 0), 0);
+      totalXpEarned += xpAw;
+      myReferrals.push({
+        referral_id: String(getRowValue(row, refData, 'referral_id', '')),
+        referred_email: String(getRowValue(row, refData, 'referred_email', '')),
+        referred_name: String(getRowValue(row, refData, 'referred_name', '')),
+        status: String(getRowValue(row, refData, 'status', 'pending')),
+        xp_awarded: xpAw,
+        created_at: getRowValue(row, refData, 'created_at', '')
+      });
+    }
+  }
+  myReferrals.reverse();
+
+  return portalOk_('REFERRAL_OK', 'Referral info loaded.', {
+    referral_code: code,
+    referral_url: url,
+    xp_bonus_on_enroll: REFERRAL_XP_BONUS,
+    referrals: myReferrals,
+    total_xp_earned: totalXpEarned
+  });
+}
+
+function actionAdminListReferrals_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  ensureReferralsSheet_();
+
+  var refData = readSheet('Referrals');
+  var usersData = readSheet('Users');
+  var nameMap = {};
+  for (var ui = 0; ui < usersData.rows.length; ui++) {
+    var ur = usersData.rows[ui];
+    var em = String(getRowValue(ur, usersData, 'email', '')).toLowerCase().trim();
+    nameMap[em] = String(getRowValue(ur, usersData, 'display_name', '') || em);
+  }
+
+  var referrals = [];
+  var totalEnrolled = 0;
+  var totalXpAwarded = 0;
+  for (var i = 0; i < refData.rows.length; i++) {
+    var row = refData.rows[i];
+    var refrerEm = String(getRowValue(row, refData, 'referrer_email', '')).toLowerCase().trim();
+    var refreeEm = String(getRowValue(row, refData, 'referred_email', '')).toLowerCase().trim();
+    var status = String(getRowValue(row, refData, 'status', 'pending'));
+    var xpAw = asNumber_(getRowValue(row, refData, 'xp_awarded', 0), 0);
+    if (status === 'enrolled' || status === 'rewarded') totalEnrolled++;
+    totalXpAwarded += xpAw;
+    referrals.push({
+      referral_id: String(getRowValue(row, refData, 'referral_id', '')),
+      referrer_email: refrerEm,
+      referrer_name: nameMap[refrerEm] || refrerEm,
+      referred_email: refreeEm,
+      referred_name: String(getRowValue(row, refData, 'referred_name', '') || nameMap[refreeEm] || refreeEm),
+      status: status,
+      xp_awarded: xpAw,
+      created_at: getRowValue(row, refData, 'created_at', '')
+    });
+  }
+  referrals.reverse();
+
+  return portalOk_('REFERRALS_OK', 'Referrals loaded.', {
+    referrals: referrals,
+    total_enrolled: totalEnrolled,
+    total_xp_awarded: totalXpAwarded
+  });
+}
+
+function actionAdminAwardReferralBonus_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const actorEmail = assertActorEmail_(payload);
+  const data = payload.data || {};
+  const referralId = String(data.referral_id || '').trim();
+  if (!referralId) return portalErr_('MISSING_ID', 'referral_id required.', null);
+
+  ensureReferralsSheet_();
+  var refData = readSheet('Referrals');
+  for (var i = 0; i < refData.rows.length; i++) {
+    var row = refData.rows[i];
+    if (String(getRowValue(row, refData, 'referral_id', '')) === referralId) {
+      if (String(getRowValue(row, refData, 'status', '')) === 'rewarded') {
+        return portalErr_('ALREADY_REWARDED', 'Bonus already awarded for this referral.', null);
+      }
+      var referrerEmail = String(getRowValue(row, refData, 'referrer_email', '')).toLowerCase().trim();
+      var rowNum = i + 2;
+      setCellByKey(refData, rowNum, 'status', 'rewarded');
+      setCellByKey(refData, rowNum, 'xp_awarded', REFERRAL_XP_BONUS);
+
+      // Award XP
+      appendObjectRow('XP_Ledger', {
+        ts: _now(),
+        email: referrerEmail,
+        points: REFERRAL_XP_BONUS,
+        action: 'REFERRAL_BONUS',
+        note: 'Referral bonus: ' + String(getRowValue(row, refData, 'referred_email', '')),
+        source: 'ADMIN',
+        key: 'REF_' + referralId
+      });
+      awardLeaguePointsForEmail_(referrerEmail, REFERRAL_XP_BONUS, 'REFERRAL_BONUS', referralId, '');
+
+      return portalOk_('BONUS_AWARDED', 'Referral bonus awarded: ' + REFERRAL_XP_BONUS + ' XP', { referral_id: referralId, xp_awarded: REFERRAL_XP_BONUS });
+    }
+  }
+  return portalErr_('NOT_FOUND', 'Referral not found.', null);
+}
+
+/* ============================================================
+ * FEATURE 41: STUDENT SPOTLIGHT GENERATOR
+ * ============================================================ */
+
+function actionAdminGenerateSpotlight_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const studentEmail = String(data.student_email || '').toLowerCase().trim();
+  if (!studentEmail) return portalErr_('MISSING_EMAIL', 'student_email required.', null);
+
+  // Fetch student basic info
+  var usersData = readSheet('Users');
+  var studentRow = null;
+  for (var i = 0; i < usersData.rows.length; i++) {
+    var row = usersData.rows[i];
+    if (String(getRowValue(row, usersData, 'email', '')).toLowerCase().trim() === studentEmail) {
+      studentRow = row;
+      break;
+    }
+  }
+  if (!studentRow) return portalErr_('STUDENT_NOT_FOUND', 'Student not found.', null);
+
+  var displayName = String(getRowValue(studentRow, usersData, 'display_name', '') || studentEmail.split('@')[0]);
+  var level = asNumber_(getRowValue(studentRow, usersData, 'level', 1), 1);
+  var streakDays = asNumber_(getRowValue(studentRow, usersData, 'streak_days', 0), 0);
+
+  // Total XP
+  var xpData = readSheet('XP_Ledger');
+  var totalXp = 0;
+  for (var xi = 0; xi < xpData.rows.length; xi++) {
+    var xr = xpData.rows[xi];
+    if (String(getRowValue(xr, xpData, 'email', '')).toLowerCase().trim() === studentEmail) {
+      totalXp += asNumber_(getRowValue(xr, xpData, 'points', 0), 0);
+    }
+  }
+
+  // Level title
+  var levelTitle = String(getRowValue(studentRow, usersData, 'level_title', '') || 'Analyst');
+
+  // Top badge
+  var topBadge = null;
+  try {
+    var achievData = readSheet('Achievements');
+    for (var ai = achievData.rows.length - 1; ai >= 0; ai--) {
+      var ar = achievData.rows[ai];
+      if (String(getRowValue(ar, achievData, 'email', '')).toLowerCase().trim() === studentEmail) {
+        var badgeId = String(getRowValue(ar, achievData, 'badge_id', '')).trim();
+        if (badgeId) {
+          // Look up badge details
+          try {
+            var badgeData = readSheet('Badges');
+            for (var bi = 0; bi < badgeData.rows.length; bi++) {
+              if (String(getRowValue(badgeData.rows[bi], badgeData, 'badge_id', '')) === badgeId) {
+                topBadge = {
+                  name: String(getRowValue(badgeData.rows[bi], badgeData, 'name', badgeId)),
+                  icon: String(getRowValue(badgeData.rows[bi], badgeData, 'icon', '🏆'))
+                };
+                break;
+              }
+            }
+          } catch (e) { topBadge = { name: badgeId, icon: '🏆' }; }
+          break;
+        }
+      }
+    }
+  } catch (e) { topBadge = null; }
+
+  // Best stat: assignments completed
+  var bestStatLabel = 'Assignments';
+  var bestStatValue = '—';
+  try {
+    var subData = readSheet('Assignment_Submissions');
+    var subCount = 0;
+    for (var si = 0; si < subData.rows.length; si++) {
+      if (String(getRowValue(subData.rows[si], subData, 'email', '')).toLowerCase().trim() === studentEmail) subCount++;
+    }
+    bestStatValue = String(subCount);
+  } catch (e) { bestStatValue = '—'; }
+
+  // Quote from journal
+  var quote = '';
+  var quoteSource = '';
+  try {
+    var jData = readSheet('Journal_Entries');
+    for (var ji = jData.rows.length - 1; ji >= 0; ji--) {
+      var jr = jData.rows[ji];
+      var jEmail = String(getRowValue(jr, jData, 'email', '') || getRowValue(jr, jData, 'student_email', '')).toLowerCase().trim();
+      if (jEmail === studentEmail) {
+        var decision = String(getRowValue(jr, jData, 'decision', '') || getRowValue(jr, jData, 'decision_text', '') || '').trim();
+        if (decision && decision.length > 20) {
+          quote = decision.length > 120 ? decision.substring(0, 120) + '…' : decision;
+          quoteSource = 'Journal Entry';
+          break;
+        }
+      }
+    }
+  } catch (e) { quote = ''; }
+
+  return portalOk_('SPOTLIGHT_OK', 'Spotlight generated.', {
+    display_name: displayName,
+    email: studentEmail,
+    level: level,
+    level_title: levelTitle,
+    xp: totalXp,
+    streak_days: streakDays,
+    top_badge: topBadge,
+    best_stat_label: bestStatLabel,
+    best_stat_value: bestStatValue,
+    quote: quote,
+    quote_source: quoteSource,
+    generated_at: _now()
+  });
+}
+
+/* ============================================================
+ * FEATURE 42: ADMIN PRIVATE NOTES ON STUDENTS
+ * ============================================================ */
+
+function ensureAdminNotesSheet_() {
+  ensureSheetWithHeaders('Admin_Notes', ['note_id','student_email','content','author_email','created_at']);
+}
+
+function actionAdminGetNotes_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const studentEmail = String(data.student_email || '').toLowerCase().trim();
+
+  ensureAdminNotesSheet_();
+  var notesData = readSheet('Admin_Notes');
+  var notes = [];
+  for (var i = 0; i < notesData.rows.length; i++) {
+    var row = notesData.rows[i];
+    if (studentEmail && String(getRowValue(row, notesData, 'student_email', '')).toLowerCase().trim() !== studentEmail) continue;
+    notes.push({
+      note_id: String(getRowValue(row, notesData, 'note_id', '')),
+      student_email: String(getRowValue(row, notesData, 'student_email', '')),
+      content: String(getRowValue(row, notesData, 'content', '')),
+      author_email: String(getRowValue(row, notesData, 'author_email', '')),
+      created_at: getRowValue(row, notesData, 'created_at', '')
+    });
+  }
+  notes.reverse();
+  return portalOk_('NOTES_OK', 'Notes loaded.', { notes: notes });
+}
+
+function actionAdminSaveNote_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const actorEmail = assertActorEmail_(payload);
+  const data = payload.data || {};
+  const studentEmail = String(data.student_email || '').toLowerCase().trim();
+  const content = String(data.content || '').trim();
+  if (!studentEmail) return portalErr_('MISSING_EMAIL', 'student_email required.', null);
+  if (!content) return portalErr_('MISSING_CONTENT', 'content required.', null);
+
+  ensureAdminNotesSheet_();
+  var noteId = generateId_('NOTE');
+  appendObjectRow('Admin_Notes', {
+    note_id: noteId,
+    student_email: studentEmail,
+    content: content,
+    author_email: actorEmail,
+    created_at: _now()
+  });
+
+  return portalOk_('NOTE_SAVED', 'Note saved.', { note_id: noteId });
+}
+
+function actionAdminDeleteNote_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const noteId = String(data.note_id || '').trim();
+  if (!noteId) return portalErr_('MISSING_ID', 'note_id required.', null);
+
+  ensureAdminNotesSheet_();
+  var notesData = readSheet('Admin_Notes');
+  for (var i = 0; i < notesData.rows.length; i++) {
+    if (String(getRowValue(notesData.rows[i], notesData, 'note_id', '')) === noteId) {
+      notesData.sh.deleteRow(i + 2); // +1 for header, +1 for 1-index
+      return portalOk_('NOTE_DELETED', 'Note deleted.', { note_id: noteId });
+    }
+  }
+  return portalErr_('NOT_FOUND', 'Note not found.', null);
+}
+
+/* ============================================================
+ * FEATURE 43: SCHEDULED PORTAL ANNOUNCEMENTS
+ * ============================================================ */
+
+function ensureAnnouncementsSheet_() {
+  ensureSheetWithHeaders('Announcements', ['announcement_id','title','body','kind','publish_at','expires_at','status','created_at','created_by']);
+}
+
+function getAnnouncementStatus_(publishAt, expiresAt) {
+  var now = new Date();
+  var pub = publishAt ? new Date(publishAt) : null;
+  var exp = expiresAt ? new Date(expiresAt) : null;
+  if (!pub || isNaN(pub.getTime())) return 'scheduled';
+  if (pub > now) return 'scheduled';
+  if (exp && !isNaN(exp.getTime()) && exp < now) return 'expired';
+  return 'active';
+}
+
+function actionGetActiveAnnouncements_(payload) {
+  const email = assertActorEmail_(payload);
+  ensureAnnouncementsSheet_();
+
+  var annData = readSheet('Announcements');
+  var active = [];
+  for (var i = 0; i < annData.rows.length; i++) {
+    var row = annData.rows[i];
+    var publishAt = String(getRowValue(row, annData, 'publish_at', ''));
+    var expiresAt = String(getRowValue(row, annData, 'expires_at', ''));
+    var status = getAnnouncementStatus_(publishAt, expiresAt);
+    if (status !== 'active') continue;
+
+    active.push({
+      announcement_id: String(getRowValue(row, annData, 'announcement_id', '')),
+      title: String(getRowValue(row, annData, 'title', '')),
+      body: String(getRowValue(row, annData, 'body', '')),
+      kind: String(getRowValue(row, annData, 'kind', 'info')),
+      publish_at: publishAt,
+      expires_at: expiresAt
+    });
+  }
+
+  return portalOk_('ANNOUNCEMENTS_OK', 'Announcements loaded.', { announcements: active });
+}
+
+function actionDismissAnnouncement_(payload) {
+  // Dismiss is client-side only (stored in component state). This endpoint is a no-op
+  // that can be extended to store per-user dismissals in a future sheet if needed.
+  assertActorEmail_(payload);
+  return portalOk_('DISMISSED', 'Dismissed.', null);
+}
+
+function actionAdminListAnnouncements_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  ensureAnnouncementsSheet_();
+
+  var annData = readSheet('Announcements');
+  var items = [];
+  for (var i = 0; i < annData.rows.length; i++) {
+    var row = annData.rows[i];
+    var publishAt = String(getRowValue(row, annData, 'publish_at', ''));
+    var expiresAt = String(getRowValue(row, annData, 'expires_at', ''));
+    items.push({
+      announcement_id: String(getRowValue(row, annData, 'announcement_id', '')),
+      title: String(getRowValue(row, annData, 'title', '')),
+      body: String(getRowValue(row, annData, 'body', '')),
+      kind: String(getRowValue(row, annData, 'kind', 'info')),
+      publish_at: publishAt,
+      expires_at: expiresAt,
+      status: getAnnouncementStatus_(publishAt, expiresAt),
+      created_at: String(getRowValue(row, annData, 'created_at', '')),
+      created_by: String(getRowValue(row, annData, 'created_by', ''))
+    });
+  }
+  items.reverse();
+  return portalOk_('ANNOUNCEMENTS_ADMIN_OK', 'Loaded.', { announcements: items });
+}
+
+function actionAdminUpsertAnnouncement_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const actorEmail = assertActorEmail_(payload);
+  const data = payload.data || {};
+  ensureAnnouncementsSheet_();
+
+  var announcementId = String(data.announcement_id || '').trim();
+  var body = String(data.body || '').trim();
+  if (!body) return portalErr_('MISSING_BODY', 'body is required.', null);
+
+  var publishAt = data.publish_at ? String(data.publish_at) : _now();
+  var expiresAt = data.expires_at ? String(data.expires_at) : '';
+  var kind = String(data.kind || 'info');
+  var title = String(data.title || '');
+
+  var annData = readSheet('Announcements');
+  var existingRowNum = -1;
+  if (announcementId) {
+    for (var i = 0; i < annData.rows.length; i++) {
+      if (String(getRowValue(annData.rows[i], annData, 'announcement_id', '')) === announcementId) {
+        existingRowNum = i + 2;
+        break;
+      }
+    }
+  }
+
+  if (existingRowNum > 0) {
+    setCellByKey(annData, existingRowNum, 'title', title);
+    setCellByKey(annData, existingRowNum, 'body', body);
+    setCellByKey(annData, existingRowNum, 'kind', kind);
+    setCellByKey(annData, existingRowNum, 'publish_at', publishAt);
+    setCellByKey(annData, existingRowNum, 'expires_at', expiresAt);
+  } else {
+    announcementId = generateId_('ANN');
+    appendObjectRow('Announcements', {
+      announcement_id: announcementId,
+      title: title,
+      body: body,
+      kind: kind,
+      publish_at: publishAt,
+      expires_at: expiresAt,
+      status: '',
+      created_at: _now(),
+      created_by: actorEmail
+    });
+  }
+
+  return portalOk_('ANNOUNCEMENT_SAVED', 'Announcement saved.', { announcement_id: announcementId });
+}
+
+function actionAdminDeleteAnnouncement_(payload) {
+  requirePortalRole_(payload, ['ADMIN', 'INSTRUCTOR']);
+  const data = payload.data || {};
+  const announcementId = String(data.announcement_id || '').trim();
+  if (!announcementId) return portalErr_('MISSING_ID', 'announcement_id required.', null);
+
+  ensureAnnouncementsSheet_();
+  var annData = readSheet('Announcements');
+  for (var i = 0; i < annData.rows.length; i++) {
+    if (String(getRowValue(annData.rows[i], annData, 'announcement_id', '')) === announcementId) {
+      annData.sh.deleteRow(i + 2);
+      return portalOk_('ANNOUNCEMENT_DELETED', 'Deleted.', { announcement_id: announcementId });
+    }
+  }
+  return portalErr_('NOT_FOUND', 'Announcement not found.', null);
 }

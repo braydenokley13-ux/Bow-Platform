@@ -1,39 +1,21 @@
-import { z } from "zod";
-import { badRequest } from "@/lib/api-response";
 import { requireAdminActor } from "@/lib/route-auth";
 import { runPortalAction } from "@/lib/portal-route";
-
-const bodySchema = z.object({
-  student_email: z.string().email(),
-  body: z.string().min(1)
-});
+import { badRequest } from "@/lib/api-response";
 
 export async function GET(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
-
-  const { searchParams } = new URL(req.url);
-  const studentEmail = searchParams.get("student_email") ?? "";
-
-  return runPortalAction({
-    action: "portal.admin.getStudentNotes",
-    actor,
-    data: { student_email: studentEmail }
-  });
+  if (error || !actor) return error!;
+  const url = new URL(req.url);
+  const student_email = url.searchParams.get("email");
+  return runPortalAction({ action: "portal.admin.getNotes", actor, data: { student_email } });
 }
 
 export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
-
-  const parsed = bodySchema.safeParse(await req.json());
-  if (!parsed.success) {
-    return badRequest("Invalid payload", "INVALID_PAYLOAD", parsed.error.flatten());
-  }
-
-  return runPortalAction({
-    action: "portal.admin.addStudentNote",
-    actor,
-    data: parsed.data
-  });
+  if (error || !actor) return error!;
+  let body: { student_email?: string; content?: string };
+  try { body = await req.json(); } catch { return badRequest("Invalid JSON"); }
+  if (!body.student_email) return badRequest("student_email required");
+  if (!body.content?.trim()) return badRequest("content required");
+  return runPortalAction({ action: "portal.admin.saveNote", actor, data: body });
 }

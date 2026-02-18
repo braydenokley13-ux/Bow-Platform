@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { AuthStatus } from "@/components/auth-status";
+import { DarkModeToggle } from "@/components/dark-mode-toggle";
 
 const studentLinks = [
   ["Onboarding", "/onboarding"],
   ["Home", "/home"],
   ["Dashboard", "/dashboard"],
+  ["Check-In", "/checkin"],
+  ["Goal", "/goal"],
+  ["Profile", "/profile"],
+  ["Join Class", "/join"],
   ["Events", "/events"],
   ["Pods", "/pods"],
   ["Quests", "/quests"],
@@ -20,15 +25,24 @@ const studentLinks = [
   ["Calendar", "/calendar"],
   ["Chat", "/chat"],
   ["Raffles", "/raffles"],
+  ["Roadmap", "/roadmap"],
+  ["Timeline", "/timeline"],
+  ["Skills", "/skills"],
+  ["Checklist", "/checklist"],
+  ["What's New", "/whats-new"],
+  ["Notif. Prefs", "/notification-preferences"],
   ["Notifications", "/notifications"],
-  ["Refer a Friend", "/referrals"],
   ["Help", "/help"],
   ["History", "/history"],
-  ["Status", "/status"]
+  ["Status", "/status"],
+  ["Records", "/records"],
+  ["Rewards", "/rewards"],
+  ["Refer", "/refer"],
 ] as const;
 
 const adminLinks = [
   ["Overview", "/admin/overview"],
+  ["Analytics", "/admin/analytics"],
   ["Launch", "/admin/launch"],
   ["Seasons", "/admin/seasons"],
   ["Events", "/admin/events"],
@@ -53,21 +67,24 @@ const adminLinks = [
   ["Negotiation", "/admin/negotiation/scorecards"],
   ["Journal Review", "/admin/journal/review"],
   ["Students", "/admin/students"],
-  ["Spotlight", "/admin/spotlight"],
-  ["Notes", "/admin/notes"],
+  ["Goals", "/admin/goals"],
+  ["Broadcast", "/admin/broadcast"],
+  ["Changelog", "/admin/changelog"],
+  ["Settings", "/admin/settings"],
   ["Support", "/admin/support"],
   ["Invites", "/admin/invites"],
-  ["Referrals", "/admin/referrals"],
-  ["Announcements", "/admin/announcements"],
-  ["Broadcast", "/admin/broadcast"],
-  ["Preview As", "/admin/preview"],
   ["Action Queue", "/admin/action-queue"],
   ["Assignments", "/admin/assignments"],
   ["Calendar", "/admin/calendar"],
   ["Chat", "/admin/chat"],
   ["Raffles", "/admin/raffles"],
   ["Audit", "/admin/audit-log"],
-  ["Runbook", "/admin/runbook"]
+  ["Runbook", "/admin/runbook"],
+  ["Rewards", "/admin/rewards"],
+  ["Referrals", "/admin/referrals"],
+  ["Spotlight", "/admin/spotlight"],
+  ["Notes", "/admin/notes"],
+  ["Announcements", "/admin/announcements"],
 ] as const;
 
 export function TopNav() {
@@ -80,7 +97,10 @@ export function TopNav() {
         </div>
 
         <div style={{ display: "grid", gap: 8 }}>
-          <AuthStatus />
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <AuthStatus />
+            <DarkModeToggle />
+          </div>
           <div className="nav-row">
             {studentLinks.map(([label, href]) => (
               <Link key={href} href={href}>

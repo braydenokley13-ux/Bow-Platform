@@ -7,7 +7,7 @@ const bodySchema = z.object({}).passthrough();
 
 export async function GET(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const url = new URL(req.url);
   const programId = url.searchParams.get("programId") || url.searchParams.get("program_id") || "";
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const parsed = bodySchema.safeParse(await req.json());
   if (!parsed.success) {

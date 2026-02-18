@@ -1,193 +1,245 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
 interface Note {
   note_id: string;
   student_email: string;
+  content: string;
   author_email: string;
-  body: string;
   created_at: string;
 }
 
+interface NotesPayload {
+  ok: boolean;
+  data: { notes: Note[] };
+}
+
+interface Student {
+  email: string;
+  display_name: string;
+}
+
+interface StudentsPayload {
+  ok: boolean;
+  data: { students: Student[] };
+}
+
 export default function AdminNotesPage() {
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState("");
+  const [inputEmail, setInputEmail] = useState("");
+  const [notes, setNotes] = useState<Note[] | null>(null);
+  const [loadingNotes, setBusyNotes] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [newContent, setNewContent] = useState("");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [filterEmail, setFilterEmail] = useState("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
-  const [studentEmail, setStudentEmail] = useState("");
-  const [body, setBody] = useState("");
-
-  async function load(email?: string) {
-    setBusy(true);
-    setError(null);
+  async function loadStudents() {
     try {
-      const params = email ? `?student_email=${encodeURIComponent(email)}` : "";
-      const json = await apiFetch<{ ok: boolean; data: Note[] }>(`/api/admin/notes${params}`);
-      setNotes(Array.isArray(json.data) ? json.data : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load notes");
-    } finally {
-      setBusy(false);
+      const json = await apiFetch<StudentsPayload>("/api/admin/students");
+      setStudents(json.data?.students ?? []);
+    } catch {
+      // fail silently
     }
   }
 
-  useEffect(() => {
-    void load();
-  }, []);
+  async function loadNotes(email: string) {
+    if (!email) return;
+    setBusyNotes(true);
+    setNotesError(null);
+    setNotes(null);
+    try {
+      const json = await apiFetch<NotesPayload>(`/api/admin/notes?email=${encodeURIComponent(email)}`);
+      setNotes(json.data.notes ?? []);
+    } catch (err) {
+      setNotesError(err instanceof Error ? err.message : "Failed to load notes");
+    } finally {
+      setBusyNotes(false);
+    }
+  }
 
-  async function onAddNote(e: FormEvent) {
-    e.preventDefault();
+  async function saveNote() {
+    if (!selectedEmail || !newContent.trim()) return;
     setSaving(true);
-    setError(null);
-    setMessage(null);
+    setSaveMsg(null);
     try {
       await apiFetch("/api/admin/notes", {
         method: "POST",
-        json: { student_email: studentEmail.trim().toLowerCase(), body: body.trim() }
+        body: JSON.stringify({ student_email: selectedEmail, content: newContent.trim() }),
       });
-      setMessage("Note saved.");
-      setStudentEmail("");
-      setBody("");
-      await load(filterEmail || undefined);
+      setNewContent("");
+      setSaveMsg("Note saved.");
+      void loadNotes(selectedEmail);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save note");
+      setSaveMsg(err instanceof Error ? err.message : "Save failed");
     } finally {
       setSaving(false);
     }
   }
 
-  async function onDelete(noteId: string) {
+  async function deleteNote(noteId: string) {
     if (!confirm("Delete this note permanently?")) return;
-    setError(null);
+    setDeleting(noteId);
     try {
       await apiFetch(`/api/admin/notes/${noteId}`, { method: "DELETE" });
-      setNotes((prev) => prev.filter((n) => n.note_id !== noteId));
+      void loadNotes(selectedEmail);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete note");
+      alert(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(null);
     }
   }
 
-  function onFilter(e: FormEvent) {
-    e.preventDefault();
-    void load(filterEmail.trim().toLowerCase() || undefined);
+  function selectStudent(email: string) {
+    setSelectedEmail(email);
+    setInputEmail(email);
+    setNotes(null);
+    setSaveMsg(null);
+    void loadNotes(email);
   }
 
-  function formatDate(ts: string) {
-    try {
-      return new Date(ts).toLocaleString();
-    } catch {
-      return ts;
-    }
-  }
+  useEffect(() => { void loadStudents(); }, []);
+
+  const studentName = students.find((s) => s.email === selectedEmail)?.display_name;
 
   return (
-    <div className="grid" style={{ gap: 14 }}>
+    <div className="grid" style={{ gap: 20 }}>
       <PageTitle
         title="Private Student Notes"
-        subtitle="Freeform timestamped notes on any student — never visible to students"
+        subtitle="Freeform notes on students — never visible to students. Timestamped and author-attributed."
       />
 
-      {/* Add note */}
-      <form className="card" onSubmit={(e) => void onAddNote(e)} style={{ display: "grid", gap: 10, maxWidth: 600 }}>
-        <div style={{ fontWeight: 700 }}>Add note</div>
-        <label>
-          Student email
+      <div className="grid-2" style={{ display: "grid", gap: 14, gridTemplateColumns: "minmax(220px, 280px) 1fr", alignItems: "start" }}>
+        {/* Student Picker */}
+        <aside className="card" style={{ display: "grid", gap: 10 }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Select Student</div>
           <input
-            type="email"
-            value={studentEmail}
-            onChange={(e) => setStudentEmail(e.target.value)}
-            placeholder="student@example.com"
-            required
+            type="text"
+            placeholder="Filter by name or email…"
+            value={inputEmail}
+            onChange={(e) => setInputEmail(e.target.value)}
+            style={{ fontSize: 13 }}
           />
-        </label>
-        <label>
-          Note
-          <textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            rows={3}
-            placeholder="1:1 meeting notes, intervention context, follow-up flags..."
-            required
-            style={{ resize: "vertical" }}
-          />
-        </label>
-        <button disabled={saving}>{saving ? "Saving..." : "Add note"}</button>
-      </form>
+          <div style={{ display: "grid", gap: 4, maxHeight: 360, overflowY: "auto" }}>
+            {students
+              .filter((s) =>
+                !inputEmail ||
+                s.display_name.toLowerCase().includes(inputEmail.toLowerCase()) ||
+                s.email.toLowerCase().includes(inputEmail.toLowerCase())
+              )
+              .map((s) => (
+                <button
+                  key={s.email}
+                  onClick={() => selectStudent(s.email)}
+                  style={{
+                    textAlign: "left",
+                    padding: "7px 10px",
+                    borderRadius: 8,
+                    background: selectedEmail === s.email ? "var(--brand)" : "var(--surface-soft)",
+                    color: selectedEmail === s.email ? "#fff" : "var(--text)",
+                    border: `1px solid ${selectedEmail === s.email ? "var(--brand)" : "var(--border)"}`,
+                    cursor: "pointer",
+                    fontSize: 13,
+                  }}
+                >
+                  <div style={{ fontWeight: 600 }}>{s.display_name}</div>
+                  <div style={{ fontSize: 11, opacity: 0.7 }}>{s.email}</div>
+                </button>
+              ))}
+            {students.length === 0 && (
+              <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>Loading students…</p>
+            )}
+          </div>
+        </aside>
 
-      {error ? <div className="banner banner-error">{error}</div> : null}
-      {message ? <div className="banner banner-success">{message}</div> : null}
+        {/* Notes Panel */}
+        <div className="card" style={{ display: "grid", gap: 14 }}>
+          {!selectedEmail ? (
+            <p style={{ color: "var(--muted)", margin: 0 }}>Select a student to view and add notes.</p>
+          ) : (
+            <>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <h2 style={{ margin: 0, fontSize: 17 }}>
+                  Notes for {studentName ?? selectedEmail}
+                </h2>
+                <span style={{ color: "var(--muted)", fontSize: 12 }}>private · never visible to students</span>
+              </div>
 
-      {/* Filter */}
-      <form className="card" onSubmit={onFilter} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-        <label style={{ flex: 1, minWidth: 240 }}>
-          Filter by student email (leave blank for all)
-          <input
-            type="email"
-            value={filterEmail}
-            onChange={(e) => setFilterEmail(e.target.value)}
-            placeholder="student@example.com"
-          />
-        </label>
-        <button type="submit" disabled={busy}>{busy ? "Loading..." : "Filter"}</button>
-        <button
-          type="button"
-          onClick={() => { setFilterEmail(""); void load(); }}
-          style={{ opacity: 0.7 }}
-        >
-          Show all
-        </button>
-      </form>
-
-      {/* Notes list */}
-      <section className="card" style={{ display: "grid", gap: 10 }}>
-        <div style={{ fontWeight: 700 }}>
-          {notes.length} note{notes.length !== 1 ? "s" : ""}
-          {filterEmail ? ` for ${filterEmail}` : ""}
-        </div>
-        {notes.length === 0 ? (
-          <p style={{ color: "var(--muted)", fontSize: 13, margin: 0 }}>No notes yet.</p>
-        ) : (
-          notes.map((note) => (
-            <div
-              key={note.note_id}
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: 8,
-                padding: "12px 14px",
-                display: "grid",
-                gap: 6
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontWeight: 700, fontSize: 13 }}>{note.student_email}</span>
-                  <span style={{ color: "var(--muted)", fontSize: 12 }}>
-                    by {note.author_email}
-                  </span>
-                </div>
+              {/* Add Note */}
+              <div style={{ display: "grid", gap: 8 }}>
+                <textarea
+                  value={newContent}
+                  onChange={(e) => setNewContent(e.target.value)}
+                  placeholder="Add a note (intervention context, 1:1 meeting notes, behavioral flags…)"
+                  rows={3}
+                  style={{ resize: "vertical", fontSize: 14 }}
+                />
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span style={{ color: "var(--muted)", fontSize: 12 }}>{formatDate(note.created_at)}</span>
-                  <button
-                    onClick={() => void onDelete(note.note_id)}
-                    style={{ fontSize: 12, padding: "2px 8px", background: "var(--danger)", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer" }}
-                  >
-                    Delete
+                  <button onClick={() => void saveNote()} disabled={saving || !newContent.trim()}>
+                    {saving ? "Saving…" : "Add Note"}
                   </button>
+                  {saveMsg && (
+                    <span style={{ fontSize: 13, color: saveMsg === "Note saved." ? "#0d7a4f" : "var(--danger)" }}>{saveMsg}</span>
+                  )}
                 </div>
               </div>
-              <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
-                {note.body}
-              </p>
-            </div>
-          ))
-        )}
-      </section>
+
+              {/* Notes List */}
+              {notesError && <div className="banner banner-error">{notesError}</div>}
+
+              {loadingNotes ? (
+                <div style={{ display: "grid", gap: 8 }}>
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="skeleton sk-line" style={{ height: 60, borderRadius: 8 }} />
+                  ))}
+                </div>
+              ) : notes === null ? null : notes.length === 0 ? (
+                <p style={{ color: "var(--muted)", fontSize: 14, margin: 0 }}>No notes yet for this student.</p>
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {notes.map((note) => (
+                    <div
+                      key={note.note_id}
+                      style={{
+                        background: "var(--surface-soft)",
+                        border: "1px solid var(--border)",
+                        borderRadius: 10,
+                        padding: "12px 14px",
+                        display: "grid",
+                        gap: 8,
+                      }}
+                    >
+                      <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>{note.content}</p>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                          {note.author_email} ·{" "}
+                          {new Date(note.created_at).toLocaleString(undefined, {
+                            month: "short", day: "numeric", year: "numeric",
+                            hour: "2-digit", minute: "2-digit",
+                          })}
+                        </span>
+                        <button
+                          onClick={() => void deleteNote(note.note_id)}
+                          disabled={deleting === note.note_id}
+                          className="danger"
+                          style={{ fontSize: 12, padding: "3px 8px" }}
+                        >
+                          {deleting === note.note_id ? "…" : "Delete"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

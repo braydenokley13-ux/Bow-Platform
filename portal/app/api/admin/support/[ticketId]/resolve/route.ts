@@ -10,7 +10,7 @@ const resolveSchema = z.object({
 
 export async function POST(req: Request, ctx: { params: Promise<{ ticketId: string }> }) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const params = await ctx.params;
   const ticketId = String(params.ticketId || "").trim();

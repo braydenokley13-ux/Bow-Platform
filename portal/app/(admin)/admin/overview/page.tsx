@@ -94,6 +94,20 @@ export default function AdminOverviewPage() {
         {busy ? <span className="pill">Loading latest data...</span> : null}
       </section>
 
+      <section className="card" style={{ display: "grid", gap: 8 }}>
+        <div className="kicker">Quick Links</div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link href="/admin/students" className="pill">Students</Link>
+          <Link href="/admin/analytics" className="pill">Analytics</Link>
+          <Link href="/admin/curriculum" className="pill">Curriculum</Link>
+          <Link href="/admin/broadcast" className="pill">Broadcast</Link>
+          <Link href="/admin/raffles" className="pill">Raffles</Link>
+          <Link href="/admin/invites" className="pill">Invites</Link>
+          <Link href="/admin/audit-log" className="pill">Audit Log</Link>
+          <Link href="/admin/launch" className="pill">Launch Center</Link>
+        </div>
+      </section>
+
       {error ? (
         <section className="card">
           <div className="banner banner-error">

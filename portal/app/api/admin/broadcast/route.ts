@@ -4,23 +4,21 @@ import { requireAdminActor } from "@/lib/route-auth";
 import { runPortalAction } from "@/lib/portal-route";
 
 const bodySchema = z.object({
-  title: z.string().min(1),
-  body: z.string().min(1),
-  kind: z.enum(["INFO", "QUEST", "SUPPORT", "CLAIM", "RAFFLE", "EVENT", "JOURNAL", "ACCOUNT", "POD", "ASSIGNMENT"]).optional()
+  message: z.string().min(1).max(2000)
 });
 
 export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const parsed = bodySchema.safeParse(await req.json());
   if (!parsed.success) {
-    return badRequest("Invalid payload", "INVALID_PAYLOAD", parsed.error.flatten());
+    return badRequest("Invalid broadcast payload", "INVALID_PAYLOAD", parsed.error.flatten());
   }
 
   return runPortalAction({
     action: "portal.admin.broadcastMessage",
     actor,
-    data: parsed.data
+    data: { message: parsed.data.message }
   });
 }

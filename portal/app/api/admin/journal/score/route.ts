@@ -14,7 +14,7 @@ const scoreSchema = z.object({
 
 export async function POST(req: Request) {
   const { actor, error } = await requireAdminActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const parsed = scoreSchema.safeParse(await req.json());
   if (!parsed.success) {

@@ -3,6 +3,6 @@ import { runPortalAction } from "@/lib/portal-route";
 
 export async function GET() {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
   return runPortalAction({ action: "portal.getActiveRaffle", actor });
 }

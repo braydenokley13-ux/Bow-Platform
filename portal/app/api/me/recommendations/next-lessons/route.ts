@@ -3,7 +3,7 @@ import { runPortalAction } from "@/lib/portal-route";
 
 export async function GET(req: Request) {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const url = new URL(req.url);
   const limitRaw = Number(url.searchParams.get("limit") || "5");

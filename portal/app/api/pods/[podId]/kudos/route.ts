@@ -10,7 +10,7 @@ const bodySchema = z.object({
 
 export async function POST(req: Request, ctx: { params: Promise<{ podId: string }> }) {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const params = await ctx.params;
   const podId = String(params.podId || "").trim();

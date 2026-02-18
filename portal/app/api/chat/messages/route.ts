@@ -12,7 +12,7 @@ const postSchema = z.object({
 
 export async function GET(req: Request) {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   try {
     const url = new URL(req.url);
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const { actor, error } = await requireActor();
-  if (error || !actor) return error;
+  if (error || !actor) return error!;
 
   const parsed = postSchema.safeParse(await req.json());
   if (!parsed.success) {
