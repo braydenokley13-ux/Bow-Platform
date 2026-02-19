@@ -21,7 +21,7 @@ interface Assignment {
 
 interface AssignmentsPayload {
   ok: boolean;
-  data: { assignments: Assignment[] };
+  data: Assignment[];
 }
 
 function statusPill(status?: string) {
@@ -57,7 +57,7 @@ export default function AssignmentsPage() {
     setLoadError(null);
     try {
       const res = await apiFetch<AssignmentsPayload>("/api/assignments");
-      setAssignments(res.data?.assignments ?? []);
+      setAssignments(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load assignments");
     } finally {

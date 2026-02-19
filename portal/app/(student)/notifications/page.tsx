@@ -19,7 +19,7 @@ interface Notification {
 
 interface NotificationsPayload {
   ok: boolean;
-  data: { notifications: Notification[] };
+  data: Notification[];
 }
 
 export default function NotificationsPage() {
@@ -32,7 +32,7 @@ export default function NotificationsPage() {
     setError(null);
     try {
       const res = await apiFetch<NotificationsPayload>("/api/notifications?limit=100");
-      setItems(res.data?.notifications ?? []);
+      setItems(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load notifications");
     } finally {

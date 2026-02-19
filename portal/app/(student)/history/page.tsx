@@ -10,20 +10,14 @@ import { apiFetch } from "@/lib/client-api";
 
 interface ActivityEvent {
   ts: string;
-  event_type?: string;
-  action?: string;
-  label?: string;
-  track?: string;
-  module?: string;
-  xp_delta?: number;
-  points?: number;
-  source?: string;
-  note?: string;
+  kind?: string;
+  title?: string;
+  detail?: string;
 }
 
 interface HistoryPayload {
   ok: boolean;
-  data: { events: ActivityEvent[] };
+  data: ActivityEvent[];
 }
 
 export default function HistoryPage() {
@@ -36,7 +30,7 @@ export default function HistoryPage() {
     setError(null);
     try {
       const res = await apiFetch<HistoryPayload>("/api/activity-history");
-      setEvents(res.data?.events ?? []);
+      setEvents(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load activity history");
     } finally {
@@ -60,28 +54,19 @@ export default function HistoryPage() {
         <EmptyState title="No history yet" body="Your activity will appear here after you complete lessons and claim XP." />
       ) : (
         <section className="card" style={{ padding: 0 }}>
-          <DataTable headers={["Date", "Event", "Track", "XP", "Note"]} stickyHeader>
-            {events.map((ev, idx) => {
-              const xp = ev.xp_delta ?? ev.points ?? null;
-              const eventLabel = ev.label ?? ev.action ?? ev.event_type ?? "—";
-              return (
-                <tr key={`${ev.ts}-${idx}`}>
-                  <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>
-                    {new Date(ev.ts).toLocaleString()}
-                  </td>
-                  <td style={{ fontWeight: 500 }}>{eventLabel}</td>
-                  <td>{ev.track ?? "—"}</td>
-                  <td style={{ fontVariantNumeric: "tabular-nums" }}>
-                    {xp != null ? (
-                      <span style={{ color: xp >= 0 ? "var(--success, #16a34a)" : "var(--danger, #dc2626)", fontWeight: 600 }}>
-                        {xp >= 0 ? `+${xp}` : xp}
-                      </span>
-                    ) : "—"}
-                  </td>
-                  <td style={{ fontSize: 13, opacity: 0.65 }}>{ev.note ?? ev.source ?? "—"}</td>
-                </tr>
-              );
-            })}
+          <DataTable headers={["Date", "Kind", "Event", "Detail"]} stickyHeader>
+            {events.map((ev, idx) => (
+              <tr key={`${ev.ts}-${idx}`}>
+                <td style={{ whiteSpace: "nowrap", fontSize: 13 }}>
+                  {new Date(ev.ts).toLocaleString()}
+                </td>
+                <td>
+                  {ev.kind ? <span className="pill" style={{ fontSize: 11 }}>{ev.kind}</span> : "—"}
+                </td>
+                <td style={{ fontWeight: 500 }}>{ev.title ?? "—"}</td>
+                <td style={{ fontSize: 13, opacity: 0.65 }}>{ev.detail ?? "—"}</td>
+              </tr>
+            ))}
           </DataTable>
         </section>
       )}
