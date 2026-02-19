@@ -19,7 +19,7 @@ interface ActiveRaffle {
 
 interface BalancePayload {
   ok: boolean;
-  data: { balance: number };
+  data: { available: number; earned: number; adjustments: number };
 }
 
 interface ActiveRafflePayload {
@@ -37,7 +37,7 @@ interface RaffleEntry {
 
 interface EntriesPayload {
   ok: boolean;
-  data: { entries: RaffleEntry[] };
+  data: RaffleEntry[];
 }
 
 export default function RafflesPage() {
@@ -63,8 +63,8 @@ export default function RafflesPage() {
       ]);
 
       if (activeRes.status === "fulfilled") setRaffle(activeRes.value.data?.raffle ?? null);
-      if (balanceRes.status === "fulfilled") setBalance(balanceRes.value.data?.balance ?? 0);
-      if (entriesRes.status === "fulfilled") setEntries(entriesRes.value.data?.entries ?? []);
+      if (balanceRes.status === "fulfilled") setBalance(balanceRes.value.data?.available ?? 0);
+      if (entriesRes.status === "fulfilled") setEntries(Array.isArray(entriesRes.value.data) ? entriesRes.value.data : []);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load raffle data");
     } finally {
