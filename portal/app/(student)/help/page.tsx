@@ -17,7 +17,7 @@ interface FAQ {
 
 interface HelpPayload {
   ok: boolean;
-  data: { faqs: FAQ[] };
+  data: FAQ[];
 }
 
 interface TicketResponse {
@@ -46,7 +46,7 @@ export default function HelpPage() {
     setFaqError(null);
     try {
       const res = await apiFetch<HelpPayload>("/api/help");
-      setFaqs(res.data?.faqs ?? []);
+      setFaqs(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setFaqError(err instanceof Error ? err.message : "Failed to load FAQ");
     } finally {

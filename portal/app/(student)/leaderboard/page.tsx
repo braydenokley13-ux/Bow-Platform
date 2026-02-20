@@ -13,13 +13,12 @@ interface LeaderboardRow {
   display_name: string;
   total_xp: number;
   level: number;
-  level_title?: string;
-  streak_days?: number;
+  streak?: number;
 }
 
 interface LeaderboardPayload {
   ok: boolean;
-  data: { rows: LeaderboardRow[]; current_user_rank?: number };
+  data: LeaderboardRow[];
 }
 
 export default function LeaderboardPage() {
@@ -27,15 +26,14 @@ export default function LeaderboardPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
-  const [myRank, setMyRank] = useState<number | null>(null);
+
 
   const load = useCallback(async (selectedTrack: string) => {
     setBusy(true);
     setError(null);
     try {
       const res = await apiFetch<LeaderboardPayload>(`/api/leaderboard?track=${selectedTrack}`);
-      setRows(res.data?.rows ?? []);
-      setMyRank(res.data?.current_user_rank ?? null);
+      setRows(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load leaderboard");
     } finally {
@@ -63,14 +61,6 @@ export default function LeaderboardPage() {
         </label>
       </section>
 
-      {myRank ? (
-        <section className="card">
-          <p className="m-0">
-            Your current rank: <strong>#{myRank}</strong>
-          </p>
-        </section>
-      ) : null}
-
       {error ? <FeedbackBanner kind="error">{error}</FeedbackBanner> : null}
 
       {busy ? (
@@ -87,16 +77,13 @@ export default function LeaderboardPage() {
                 </td>
                 <td>
                   <span style={{ fontWeight: 600 }}>{row.display_name}</span>
-                  {row.level_title ? (
-                    <span style={{ marginLeft: 8, fontSize: 12, opacity: 0.55 }}>{row.level_title}</span>
-                  ) : null}
                 </td>
                 <td>
                   <span className="pill">Lv {row.level}</span>
                 </td>
                 <td style={{ fontVariantNumeric: "tabular-nums" }}>{row.total_xp.toLocaleString()} XP</td>
                 <td style={{ fontVariantNumeric: "tabular-nums" }}>
-                  {row.streak_days != null ? `${row.streak_days}d` : "—"}
+                  {row.streak != null ? `${row.streak}d` : "—"}
                 </td>
               </tr>
             ))}

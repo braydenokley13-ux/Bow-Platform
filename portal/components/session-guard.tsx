@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-client";
@@ -42,7 +42,7 @@ export function SessionGuard({
   children,
   requireAdmin = false
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   requireAdmin?: boolean;
 }) {
   const router = useRouter();

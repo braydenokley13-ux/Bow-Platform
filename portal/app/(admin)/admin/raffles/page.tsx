@@ -2,7 +2,6 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
-import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { FeedbackBanner } from "@/components/feedback-banner";
@@ -20,7 +19,7 @@ interface Raffle {
 
 interface RafflesPayload {
   ok: boolean;
-  data: { raffles: Raffle[] };
+  data: { raffle: Raffle | null };
 }
 
 const statusColor: Record<string, string> = {
@@ -30,7 +29,7 @@ const statusColor: Record<string, string> = {
 };
 
 export default function AdminRafflesPage() {
-  const [raffles, setRaffles] = useState<Raffle[]>([]);
+  const [activeRaffle, setActiveRaffle] = useState<Raffle | null>(null);
   const [loadBusy, setLoadBusy] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -40,7 +39,7 @@ export default function AdminRafflesPage() {
   const [createMsg, setCreateMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [createBusy, setCreateBusy] = useState(false);
 
-  const [drawingId, setDrawingId] = useState<string | null>(null);
+  const [drawing, setDrawing] = useState(false);
   const [drawMsg, setDrawMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -48,7 +47,7 @@ export default function AdminRafflesPage() {
     setLoadError(null);
     try {
       const res = await apiFetch<RafflesPayload>("/api/admin/raffles");
-      setRaffles(res.data?.raffles ?? []);
+      setActiveRaffle(res.data?.raffle ?? null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load raffles");
     } finally {
@@ -82,18 +81,18 @@ export default function AdminRafflesPage() {
   }
 
   async function closeDraw(raffleId: string) {
-    setDrawingId(raffleId);
+    setDrawing(true);
     setDrawMsg(null);
     try {
       await apiFetch(`/api/admin/raffles/${encodeURIComponent(raffleId)}/close-draw`, {
         method: "POST"
       });
-      setDrawMsg({ kind: "success", text: `Raffle ${raffleId} closed and winner drawn.` });
+      setDrawMsg({ kind: "success", text: `Raffle closed and winner drawn.` });
       await load();
     } catch (err) {
       setDrawMsg({ kind: "error", text: err instanceof Error ? err.message : "Close/draw failed" });
     } finally {
-      setDrawingId(null);
+      setDrawing(false);
     }
   }
 
@@ -126,7 +125,7 @@ export default function AdminRafflesPage() {
       {drawMsg ? <FeedbackBanner kind={drawMsg.kind}>{drawMsg.text}</FeedbackBanner> : null}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h2 className="title-16" style={{ margin: 0 }}>All Raffles</h2>
+        <h2 className="title-16" style={{ margin: 0 }}>Active Raffle</h2>
         <button className="secondary" onClick={() => void load()} disabled={loadBusy} style={{ fontSize: 13 }}>
           {loadBusy ? "Refreshing..." : "Refresh"}
         </button>
@@ -134,51 +133,55 @@ export default function AdminRafflesPage() {
 
       {loadError ? <FeedbackBanner kind="error">{loadError}</FeedbackBanner> : null}
 
-      {loadBusy && raffles.length === 0 ? (
+      {loadBusy && !activeRaffle ? (
         <LoadingSkeleton lines={4} />
-      ) : raffles.length === 0 ? (
-        <EmptyState title="No raffles yet" body="Create your first raffle above." />
-      ) : (
-        <section className="card" style={{ padding: 0 }}>
-          <DataTable headers={["Title", "Prize", "Status", "Closes At", "Entries", "Winner", "Action"]} stickyHeader>
-            {raffles.map((r) => {
-              const status = r.status?.toUpperCase() ?? "OPEN";
-              const isDrawing = drawingId === r.raffle_id;
-              const canDraw = status === "OPEN";
-              return (
-                <tr key={r.raffle_id}>
-                  <td style={{ fontWeight: 500 }}>{r.title}</td>
-                  <td>{r.prize}</td>
-                  <td>
-                    <span
-                      className="pill"
-                      style={{ fontSize: 11, color: statusColor[status] ?? "inherit" }}
-                    >
-                      {status}
-                    </span>
-                  </td>
-                  <td style={{ fontSize: 12, whiteSpace: "nowrap" }}>
-                    {r.closes_at ? new Date(r.closes_at).toLocaleDateString() : "—"}
-                  </td>
-                  <td style={{ fontVariantNumeric: "tabular-nums" }}>{r.entry_count ?? "—"}</td>
-                  <td style={{ fontSize: 13 }}>{r.winner_email ?? "—"}</td>
-                  <td>
-                    {canDraw ? (
-                      <button
-                        className="danger"
-                        style={{ fontSize: 12, padding: "4px 10px" }}
-                        disabled={isDrawing}
-                        onClick={() => void closeDraw(r.raffle_id)}
-                      >
-                        {isDrawing ? "Drawing..." : "Close & Draw"}
-                      </button>
-                    ) : "—"}
-                  </td>
-                </tr>
-              );
-            })}
-          </DataTable>
+      ) : activeRaffle ? (
+        <section className="card stack-10">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+            <div>
+              <h3 className="title-16" style={{ margin: 0 }}>{activeRaffle.title}</h3>
+              <p className="m-0" style={{ fontSize: 13, opacity: 0.65, marginTop: 4 }}>
+                Prize: {activeRaffle.prize}
+              </p>
+            </div>
+            <span
+              className="pill"
+              style={{ fontSize: 11, color: statusColor[activeRaffle.status?.toUpperCase() ?? "OPEN"] ?? "inherit", flexShrink: 0 }}
+            >
+              {activeRaffle.status?.toUpperCase() ?? "OPEN"}
+            </span>
+          </div>
+          <div style={{ display: "grid", gap: 4, fontSize: 13 }}>
+            {activeRaffle.closes_at ? (
+              <p className="m-0" style={{ opacity: 0.65 }}>
+                Closes: {new Date(activeRaffle.closes_at).toLocaleString()}
+              </p>
+            ) : null}
+            {activeRaffle.entry_count != null ? (
+              <p className="m-0" style={{ opacity: 0.65 }}>
+                Entries: {activeRaffle.entry_count}
+              </p>
+            ) : null}
+            {activeRaffle.winner_email ? (
+              <p className="m-0">
+                Winner: <strong>{activeRaffle.winner_email}</strong>
+              </p>
+            ) : null}
+          </div>
+          {activeRaffle.status?.toUpperCase() === "OPEN" ? (
+            <div>
+              <button
+                className="danger"
+                disabled={drawing}
+                onClick={() => void closeDraw(activeRaffle.raffle_id)}
+              >
+                {drawing ? "Drawing..." : "Close & Draw Winner"}
+              </button>
+            </div>
+          ) : null}
         </section>
+      ) : (
+        <EmptyState title="No active raffle" body="Create a raffle above to get started." />
       )}
     </div>
   );

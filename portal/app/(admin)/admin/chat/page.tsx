@@ -20,7 +20,7 @@ interface ChatMessage {
 
 interface MessagesPayload {
   ok: boolean;
-  data: { messages: ChatMessage[] };
+  data: ChatMessage[];
 }
 
 export default function AdminChatPage() {
@@ -35,7 +35,7 @@ export default function AdminChatPage() {
     setLoadError(null);
     try {
       const res = await apiFetch<MessagesPayload>("/api/admin/chat?limit=300");
-      setMessages(res.data?.messages ?? []);
+      setMessages(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load messages");
     } finally {

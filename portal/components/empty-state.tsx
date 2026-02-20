@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
+
 export function EmptyState(props: {
   title: string;
   body?: string;
-  action?: React.ReactNode;
+  action?: ReactNode;
 }) {
   return (
     <div className="empty-state" role="status">

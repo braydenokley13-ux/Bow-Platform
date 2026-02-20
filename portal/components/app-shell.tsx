@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { roleNavigation, flattenSections, findLabelForPath } from "@/components/navigation-config";
 import { Sidebar } from "@/components/sidebar";
@@ -19,8 +19,8 @@ function roleLabel(role: "STUDENT" | "ADMIN") {
 
 export function AppShell(props: {
   role: "STUDENT" | "ADMIN";
-  children: React.ReactNode;
-  banner?: React.ReactNode;
+  children: ReactNode;
+  banner?: ReactNode;
 }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
