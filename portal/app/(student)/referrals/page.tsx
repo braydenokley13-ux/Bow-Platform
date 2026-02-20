@@ -4,10 +4,21 @@ import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { apiFetch } from "@/lib/client-api";
 
+interface ReferralEntry {
+  referral_id: string;
+  referred_email: string;
+  referred_name: string;
+  status: string;
+  xp_awarded: number;
+  created_at: string;
+}
+
 interface ReferralData {
   referral_code: string;
-  uses_count: number;
-  created_at: string;
+  referral_url: string;
+  xp_bonus_on_enroll: number;
+  referrals: ReferralEntry[];
+  total_xp_earned: number;
 }
 
 export default function ReferralsPage() {
@@ -33,15 +44,10 @@ export default function ReferralsPage() {
     void load();
   }, []);
 
-  function getReferralUrl() {
-    if (!data) return "";
-    return `${window.location.origin}/activate?ref=${data.referral_code}`;
-  }
-
   async function copyLink() {
-    const url = getReferralUrl();
+    if (!data?.referral_url) return;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(data.referral_url);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
@@ -77,7 +83,7 @@ export default function ReferralsPage() {
                 color: "var(--fg)"
               }}
             >
-              {getReferralUrl()}
+              {data.referral_url}
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button onClick={() => void copyLink()}>
@@ -100,12 +106,16 @@ export default function ReferralsPage() {
 
           <section className="card row-24-wrap">
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>{data.uses_count}</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{data.referrals.length}</div>
               <div className="muted-12">Successful referrals</div>
             </div>
             <div style={{ textAlign: "center" }}>
-              <div style={{ fontSize: 28, fontWeight: 800 }}>{data.uses_count * 500}</div>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>{data.total_xp_earned.toLocaleString()}</div>
               <div className="muted-12">XP earned via referrals</div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 28, fontWeight: 800 }}>+{data.xp_bonus_on_enroll.toLocaleString()}</div>
+              <div className="muted-12">XP per successful referral</div>
             </div>
           </section>
         </>

@@ -5490,6 +5490,7 @@ function handlePortalActionRequest_(payload) {
       'portal.submitClaim': submitClaimFromPortal_,
       'portal.activateInvite': actionActivateInvite_,
       'portal.getCredentials': actionGetCredentials_,
+      'portal.getBadges': actionGetBadges_,
       'portal.getActivities': actionGetActivities_,
       'portal.getModules': actionGetModules_,
       'portal.getPublishedCurriculum': actionGetPublishedCurriculum_,
@@ -6499,4 +6500,58 @@ function actionAdminDeleteAnnouncement_(payload) {
     }
   }
   return portalErr_('NOT_FOUND', 'Announcement not found.', null);
+}
+
+/* ============================================================
+ * FEATURE 44: BADGE CATALOG
+ * ============================================================ */
+
+function actionGetBadges_(payload) {
+  const email = assertActorEmail_(payload);
+  const data = payload.data || {};
+  const filterBadgeId = String(data.badge_id || '').trim();
+
+  const badgesData = readSheet('Badges');
+  const achievData = readSheet('Achievements');
+
+  const wantEmail = email.toLowerCase();
+  const earnedMap = {};  // badge_id -> awarded_at
+  const earnerMap = {};  // badge_id -> [{email, earned_at}]
+
+  for (var i = 0; i < achievData.rows.length; i++) {
+    var ar = achievData.rows[i];
+    var em = String(getRowValue(ar, achievData, 'email', '')).toLowerCase();
+    var bid = String(getRowValue(ar, achievData, 'badge_id', '')).trim();
+    var awardedAt = String(getRowValue(ar, achievData, 'awarded_at', '') || '');
+    if (!bid) continue;
+    if (em === wantEmail) earnedMap[bid] = awardedAt;
+    if (!earnerMap[bid]) earnerMap[bid] = [];
+    earnerMap[bid].push({ email: em, earned_at: awardedAt });
+  }
+
+  var out = [];
+  for (var j = 0; j < badgesData.rows.length; j++) {
+    var row = badgesData.rows[j];
+    var badgeId = String(getRowValue(row, badgesData, 'badge_id', '')).trim();
+    if (!badgeId) continue;
+    if (filterBadgeId && badgeId !== filterBadgeId) continue;
+
+    var earners = earnerMap[badgeId] || [];
+    var badge = {
+      badge_id: badgeId,
+      name: String(getRowValue(row, badgesData, 'name', badgeId)),
+      description: String(getRowValue(row, badgesData, 'description', '')),
+      criteria: String(getRowValue(row, badgesData, 'criteria', '')),
+      icon: String(getRowValue(row, badgesData, 'icon_url', '') || getRowValue(row, badgesData, 'icon', '') || '\uD83C\uDFC5'),
+      category: String(getRowValue(row, badgesData, 'category', 'General')),
+      rarity: String(getRowValue(row, badgesData, 'rarity', 'common')),
+      earned: earnedMap.hasOwnProperty(badgeId),
+      earned_at: earnedMap[badgeId] || null,
+      earner_count: earners.length
+    };
+    if (filterBadgeId) badge.earners = earners;
+    out.push(badge);
+  }
+
+  return portalOk_('BADGES_OK', 'Badges loaded.', out);
 }
