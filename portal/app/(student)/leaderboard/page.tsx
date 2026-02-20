@@ -27,7 +27,6 @@ export default function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
 
-
   const load = useCallback(async (selectedTrack: string) => {
     setBusy(true);
     setError(null);

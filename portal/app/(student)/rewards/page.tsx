@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
+import { DataTable } from "@/components/data-table";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { apiFetch } from "@/lib/client-api";
 
 interface RewardItem {
@@ -42,9 +44,9 @@ const REDEMPTION_STATUS_CLASS: Record<string, string> = {
 };
 
 export default function RewardsPage() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [payload, setPayload] = useState<RewardsPayload | null>(null);
+  const [busy, setBusy]           = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [payload, setPayload]     = useState<RewardsPayload | null>(null);
   const [redeeming, setRedeeming] = useState<string | null>(null);
   const [redeemMsg, setRedeemMsg] = useState<{ id: string; ok: boolean; text: string } | null>(null);
 
@@ -83,8 +85,8 @@ export default function RewardsPage() {
     void load();
   }, []);
 
-  const catalog = payload?.data.catalog ?? [];
-  const myXp = payload?.data.my_xp ?? 0;
+  const catalog     = payload?.data.catalog ?? [];
+  const myXp        = payload?.data.my_xp ?? 0;
   const redemptions = payload?.data.my_redemptions ?? [];
 
   return (
@@ -133,7 +135,7 @@ export default function RewardsPage() {
               const accentClass = CATEGORY_CLASS[item.category] ?? "rewards-accent-blue";
               const canAfford = myXp >= item.xp_cost;
               const isRedeeming = redeeming === item.reward_id;
-              const msg = redeemMsg?.id === item.reward_id ? redeemMsg : null;
+              const msg        = redeemMsg?.id === item.reward_id ? redeemMsg : null;
               return (
                 <article
                   key={item.reward_id}

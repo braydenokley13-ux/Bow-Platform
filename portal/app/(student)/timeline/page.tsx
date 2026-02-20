@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { apiFetch } from "@/lib/client-api";
 
 interface TimelineEvent {
@@ -23,26 +24,32 @@ interface TimelinePayload {
 }
 
 const KIND_ICON: Record<string, string> = {
-  xp_earned: "⚡",
-  badge_unlocked: "🏅",
-  event_attended: "📅",
+  xp_earned:            "⚡",
+  badge_unlocked:       "🏅",
+  event_attended:       "📅",
   assignment_submitted: "📝",
-  goal_set: "🎯",
-  shoutout_sent: "👏",
-  shoutout_received: "🌟",
-  checkin: "✅",
-  raffle_entered: "🎟",
-  quest_completed: "🏆",
-  default: "•"
+  goal_set:             "🎯",
+  shoutout_sent:        "👏",
+  shoutout_received:    "🌟",
+  checkin:              "✅",
+  raffle_entered:       "🎟",
+  quest_completed:      "🏆",
+  default:              "•",
 };
 
 function kindIcon(kind: string) {
   return KIND_ICON[kind] ?? KIND_ICON.default;
 }
 
+function fmt(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+}
+
 export default function TimelinePage() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy]     = useState(false);
+  const [error, setError]   = useState<string | null>(null);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [cursor, setCursor] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(false);
@@ -81,15 +88,19 @@ export default function TimelinePage() {
 
       <section className="card row-8">
         <button onClick={() => void load()} disabled={busy}>
-          {busy ? "Loading..." : "Refresh"}
+          {busy ? "Loading…" : "Refresh"}
         </button>
       </section>
 
-      {error ? (
+      {error && (
+        <div className="banner banner-error">{error}</div>
+      )}
+
+      {busy && events.length === 0 && (
         <section className="card">
-          <div className="banner banner-error">{error}</div>
+          <LoadingSkeleton lines={6} />
         </section>
-      ) : null}
+      )}
 
       {!busy && events.length === 0 ? (
         <section className="card">
@@ -132,12 +143,7 @@ export default function TimelinePage() {
                   </div>
                 ) : null}
                 <div style={{ fontSize: 12, opacity: 0.45, marginTop: 2 }}>
-                  {new Date(ev.occurred_at).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit"
-                  })}
+                  {fmt(ev.occurred_at)}
                 </div>
               </div>
             </div>

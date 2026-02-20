@@ -53,10 +53,7 @@ interface DashboardPayload {
         points: number;
       }>;
     };
-    quick_actions?: Array<{
-      title: string;
-      href: string;
-    }>;
+    quick_actions?: Array<{ title: string; href: string }>;
     notifications: Array<{
       notification_id: string;
       title: string;
@@ -69,8 +66,8 @@ interface DashboardPayload {
 }
 
 export default function StudentDashboardPage() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
 
   async function load() {
@@ -86,13 +83,11 @@ export default function StudentDashboardPage() {
     }
   }
 
-  useEffect(() => {
-    void load();
-  }, []);
+  useEffect(() => { void load(); }, []);
 
   const user = payload?.data.user;
   const trackCards = useMemo(() => {
-    const map = payload?.data.xp_by_track || {};
+    const map = payload?.data.xp_by_track ?? {};
     return Object.entries(map).map(([track, xp]) => ({ track, xp }));
   }, [payload]);
 

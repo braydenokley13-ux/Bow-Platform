@@ -48,24 +48,17 @@ interface HomeFeedPayload {
       points: number;
       members: Array<{ email: string; display_name: string }>;
     } | null;
-    my_standing: {
-      rank: number;
-      points: number;
-    } | null;
+    my_standing: { rank: number; points: number } | null;
     rewards: {
       streak_days: number;
-      recent_points: Array<{
-        ts: string;
-        delta_points: number;
-        reason: string;
-      }>;
+      recent_points: Array<{ ts: string; delta_points: number; reason: string }>;
     };
   };
 }
 
 export default function StudentHomeFeedPage() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy]       = useState(false);
+  const [error, setError]     = useState<string | null>(null);
   const [payload, setPayload] = useState<HomeFeedPayload | null>(null);
 
   async function load() {
@@ -81,9 +74,7 @@ export default function StudentHomeFeedPage() {
     }
   }
 
-  useEffect(() => {
-    void load();
-  }, []);
+  useEffect(() => { void load(); }, []);
 
   const d = payload?.data;
 
@@ -153,7 +144,7 @@ export default function StudentHomeFeedPage() {
                   </div>
                 </div>
               ))}
-              <Link href="/events">Open all events</Link>
+              <Link href="/events">Open all events →</Link>
             </div>
           ) : (
             <EmptyState title="No active events" body="No active events right now." />

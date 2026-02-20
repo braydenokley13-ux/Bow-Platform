@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
+import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { apiFetch } from "@/lib/client-api";
 
 type EventKind = "session" | "deadline" | "event" | "office_hours" | string;
@@ -23,17 +24,17 @@ interface CalendarPayload {
 }
 
 const KIND_LABELS: Record<string, string> = {
-  session: "Session",
-  deadline: "Deadline",
-  event: "Event",
-  office_hours: "Office Hours"
+  session:      "Session",
+  deadline:     "Deadline",
+  event:        "Event",
+  office_hours: "Office Hours",
 };
 
 const KIND_COLORS: Record<string, string> = {
-  session: "#2563eb",
-  deadline: "#dc2626",
-  event: "#7c3aed",
-  office_hours: "#059669"
+  session:      "#2563eb",
+  deadline:     "#dc2626",
+  event:        "#7c3aed",
+  office_hours: "#059669",
 };
 
 function kindColor(kind: string) { return KIND_COLORS[kind] ?? "#6b7280"; }
@@ -52,13 +53,15 @@ function groupByMonth(events: CalendarEvent[]) {
 
 function monthLabel(key: string) {
   const [year, month] = key.split("-");
-  return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString(undefined, {
+    month: "long", year: "numeric",
+  });
 }
 
 export default function CalendarPage() {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [busy, setBusy]           = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+  const [events, setEvents]       = useState<CalendarEvent[]>([]);
   const [filterKind, setFilterKind] = useState<string>("all");
 
   async function load() {
@@ -80,20 +83,23 @@ export default function CalendarPage() {
   useEffect(() => { void load(); }, []);
 
   const now = new Date();
-  const filtered = filterKind === "all" ? events : events.filter((e) => e.kind === filterKind);
-  const upcoming = filtered.filter((e) => new Date(e.starts_at) >= now);
-  const past = filtered.filter((e) => new Date(e.starts_at) < now);
-  const grouped = groupByMonth(upcoming);
-  const kinds = Array.from(new Set(events.map((e) => e.kind)));
+  const filtered  = filterKind === "all" ? events : events.filter((e) => e.kind === filterKind);
+  const upcoming  = filtered.filter((e) => new Date(e.starts_at) >= now);
+  const past      = filtered.filter((e) => new Date(e.starts_at) < now);
+  const grouped   = groupByMonth(upcoming);
+  const kinds     = Array.from(new Set(events.map((e) => e.kind)));
 
   return (
     <div className="grid gap-14">
       <PageTitle title="Program Calendar" subtitle="Upcoming sessions, deadlines, events, and office hours" />
 
-      {error ? <section className="card"><div className="banner banner-error">{error}</div></section> : null}
-
-      <section className="card" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-        <button className={filterKind === "all" ? "" : "secondary"} onClick={() => setFilterKind("all")}>All</button>
+      <div className="action-bar flex-wrap">
+        <button
+          className={filterKind === "all" ? "" : "secondary"}
+          onClick={() => setFilterKind("all")}
+        >
+          All
+        </button>
         {kinds.map((k) => (
           <button
             key={k}
@@ -107,7 +113,13 @@ export default function CalendarPage() {
         <button className="secondary ml-auto" onClick={() => void load()} disabled={busy}>
           {busy ? "Loading..." : "Refresh"}
         </button>
-      </section>
+      </div>
+
+      {error && <div className="banner banner-error">{error}</div>}
+
+      {busy && events.length === 0 && (
+        <section className="card"><LoadingSkeleton lines={6} /></section>
+      )}
 
       {upcoming.length === 0 && !busy ? (
         <section className="card">
@@ -126,20 +138,15 @@ export default function CalendarPage() {
             const d = new Date(ev.starts_at);
             const isToday = d.toDateString() === now.toDateString();
             return (
-              <div
-                key={ev.event_id}
-                style={{
-                  display: "grid", gridTemplateColumns: "56px 1fr",
-                  borderBottom: idx < evs.length - 1 ? "1px solid var(--border, #e5e7eb)" : "none",
-                  background: isToday ? "var(--accent-soft, #eff6ff)" : undefined
-                }}
-              >
-                <div style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  padding: "12px 4px", borderRight: "3px solid " + kindColor(ev.kind)
-                }}>
-                  <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1 }}>{d.getDate()}</span>
-                  <span style={{ fontSize: 11, opacity: 0.6 }}>{d.toLocaleDateString(undefined, { weekday: "short" })}</span>
+              <div key={ev.event_id} className={`cal-row${isToday ? " today" : ""}`}>
+                <div
+                  className="cal-date-col"
+                  style={{ borderRight: `3px solid ${kindColor(ev.kind)}` }}
+                >
+                  <span className="cal-date-num">{d.getDate()}</span>
+                  <span className="cal-date-day">
+                    {d.toLocaleDateString(undefined, { weekday: "short" })}
+                  </span>
                 </div>
                 <div style={{ padding: "12px 14px", display: "grid", gap: 3 }}>
                   <div className="row-8-center-wrap">
@@ -149,20 +156,24 @@ export default function CalendarPage() {
                     }}>
                       {kindLabel(ev.kind)}
                     </span>
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{ev.title}</span>
-                    {isToday ? <span style={{ fontSize: 11, color: "#2563eb", fontWeight: 700 }}>TODAY</span> : null}
+                    <span className="cal-event-title">{ev.title}</span>
+                    {isToday && <span className="cal-today-badge">TODAY</span>}
                   </div>
-                  <div style={{ fontSize: 13, opacity: 0.55 }}>
+                  <div className="cal-event-time">
                     {d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}
-                    {ev.ends_at ? ` – ${new Date(ev.ends_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}` : ""}
+                    {ev.ends_at
+                      ? ` – ${new Date(ev.ends_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}`
+                      : ""}
                     {ev.location ? ` · ${ev.location}` : ""}
                   </div>
-                  {ev.notes ? <p style={{ margin: 0, fontSize: 13, opacity: 0.7 }}>{ev.notes}</p> : null}
-                  {ev.meeting_url ? (
-                    <a href={ev.meeting_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: "#2563eb" }}>
+                  {ev.notes && (
+                    <p className="text-muted text-sm m-0">{ev.notes}</p>
+                  )}
+                  {ev.meeting_url && (
+                    <a href={ev.meeting_url} target="_blank" rel="noopener noreferrer" className="text-sm">
                       Join meeting →
                     </a>
-                  ) : null}
+                  )}
                 </div>
               </div>
             );
@@ -170,26 +181,24 @@ export default function CalendarPage() {
         </section>
       ))}
 
-      {past.length > 0 ? (
+      {past.length > 0 && (
         <details>
-          <summary style={{ cursor: "pointer", padding: "8px 0", opacity: 0.55, fontSize: 13 }}>
+          <summary className="cal-past-summary">
             {past.length} past event{past.length !== 1 ? "s" : ""}
           </summary>
-          <div className="grid" style={{ gap: 6, marginTop: 8 }}>
+          <div className="grid gap-2" style={{ marginTop: 8 }}>
             {past.map((ev) => (
-              <div key={ev.event_id} className="card" style={{ opacity: 0.55, display: "flex", gap: 10, alignItems: "center" }}>
-                <span style={{ fontSize: 11, padding: "1px 7px", borderRadius: 99, background: "#e5e7eb" }}>
-                  {kindLabel(ev.kind)}
-                </span>
-                <span style={{ fontSize: 14 }}>{ev.title}</span>
-                <span style={{ fontSize: 12, marginLeft: "auto" }}>
+              <div key={ev.event_id} className="card cal-past-row" style={{ padding: "10px 14px" }}>
+                <span className="cal-past-kind">{kindLabel(ev.kind)}</span>
+                <span className="text-sm">{ev.title}</span>
+                <span className="text-xs text-muted" style={{ marginLeft: "auto" }}>
                   {new Date(ev.starts_at).toLocaleDateString()}
                 </span>
               </div>
             ))}
           </div>
         </details>
-      ) : null}
+      )}
     </div>
   );
 }
