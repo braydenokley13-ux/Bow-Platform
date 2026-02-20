@@ -19,7 +19,7 @@ interface Raffle {
 
 interface RafflesPayload {
   ok: boolean;
-  data: Raffle | null;
+  data: { raffle: Raffle | null };
 }
 
 const statusColor: Record<string, string> = {
@@ -47,7 +47,7 @@ export default function AdminRafflesPage() {
     setLoadError(null);
     try {
       const res = await apiFetch<RafflesPayload>("/api/admin/raffles");
-      setActiveRaffle(res.data ?? null);
+      setActiveRaffle(res.data?.raffle ?? null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Failed to load raffles");
     } finally {
