@@ -1,8 +1,10 @@
+import type { ReactNode } from "react";
+
 export function PageSection(props: {
   title?: string;
   subtitle?: string;
-  children: React.ReactNode;
-  actions?: React.ReactNode;
+  children: ReactNode;
+  actions?: ReactNode;
 }) {
   return (
     <section className="card page-section">

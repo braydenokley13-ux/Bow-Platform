@@ -1,6 +1,8 @@
+import type { ReactNode } from "react";
+
 export function DataTable(props: {
   headers: string[];
-  children: React.ReactNode;
+  children: ReactNode;
   stickyHeader?: boolean;
 }) {
   return (
