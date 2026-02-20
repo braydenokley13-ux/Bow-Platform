@@ -154,11 +154,8 @@ export default function OnboardingPage() {
               >
                 {step.text}{" "}
                 {step.href && step.linkText ? (
-                  <Link
-                    href={step.href}
-                    onClick={(e) => e.stopPropagation()}
-                    style={{ fontWeight: 600 }}
-                  >
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  <Link href={step.href as any} onClick={(e) => e.stopPropagation()} style={{ fontWeight: 600 }}>
                     {step.linkText}
                   </Link>
                 ) : null}
