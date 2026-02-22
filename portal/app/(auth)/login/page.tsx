@@ -187,6 +187,12 @@ export default function LoginPage() {
         <button disabled={busy || checkingAuth}>{busy || checkingAuth ? "Signing in..." : "Sign in"}</button>
         {message ? <p className="form-message">{message}</p> : null}
       </form>
+      <p style={{ textAlign: "center", fontSize: 12, opacity: 0.4, marginTop: 0 }}>
+        First time?{" "}
+        <a href="/setup" style={{ color: "inherit" }}>
+          Run first-time setup
+        </a>
+      </p>
     </div>
   );
 }

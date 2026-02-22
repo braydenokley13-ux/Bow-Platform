@@ -5646,6 +5646,39 @@ function seedPortalDefaults_() {
   seedCurriculumDraftFromCatalogIfEmpty_();
 }
 
+function actionBootstrap_(payload) {
+  var data = payload.data || {};
+  var email = String(data.email || '').toLowerCase().trim();
+  var firebaseUid = String(data.firebase_uid || '').trim();
+
+  if (!email || !firebaseUid) {
+    return portalErr_('MISSING_FIELDS', 'email and firebase_uid are required.', null);
+  }
+
+  // Lock: refuse if any ADMIN already exists
+  var users = readSheet('Portal_Users');
+  for (var i = 0; i < users.rows.length; i++) {
+    var role = normalizeRole_(getRowValue(users.rows[i], users, 'role', 'STUDENT'));
+    var status = upper(getRowValue(users.rows[i], users, 'status', 'ACTIVE'));
+    if (role === 'ADMIN' && status !== 'SUSPENDED') {
+      return portalErr_('BOOTSTRAP_LOCKED', 'An admin already exists. Bootstrap is disabled.', null);
+    }
+  }
+
+  upsertPortalUser_({
+    email: email,
+    role: 'ADMIN',
+    status: 'ACTIVE',
+    firebaseUid: firebaseUid,
+    activatedAt: _now(),
+    lastLoginAt: _now()
+  });
+
+  logOps('bootstrap_admin_created', { email: email });
+
+  return portalOk_('BOOTSTRAP_OK', 'First admin created.', { email: email, role: 'ADMIN' });
+}
+
 function actionActivateInvite_(payload) {
   const data = payload.data || {};
   const inviteId = String(data.invite_id || '').trim();
@@ -5743,8 +5776,9 @@ function handlePortalActionRequest_(payload) {
     const requestId = String(payload.requestId || '').trim();
     const actorEmail = String(payload.actorEmail || '').toLowerCase().trim();
 
-    // Invite activation is the one action allowed before an existing portal user row exists.
-    if (action !== 'portal.activateInvite') {
+    // These actions are allowed before an existing portal user row exists.
+    var noActorRequired = new Set(['portal.activateInvite', 'portal.bootstrap']);
+    if (!noActorRequired.has(action)) {
       ensureActorAuthorized_(payload);
     }
 
@@ -5786,6 +5820,7 @@ function handlePortalActionRequest_(payload) {
       'portal.getProgress': actionGetProgress_,
       'portal.submitClaim': submitClaimFromPortal_,
       'portal.activateInvite': actionActivateInvite_,
+      'portal.bootstrap': actionBootstrap_,
       'portal.getCredentials': actionGetCredentials_,
       'portal.getBadges': actionGetBadges_,
       'portal.getActivities': actionGetActivities_,
