@@ -3,13 +3,14 @@ import { runPortalAction } from "@/lib/portal-route";
 
 export async function POST(
   _req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const { actor, error } = await requireActor();
   if (error || !actor) return error!;
+  const { id } = await params;
   return runPortalAction({
     action: "portal.markNotificationRead",
     actor,
-    data: { notification_id: params.id }
+    data: { notification_id: id }
   });
 }
