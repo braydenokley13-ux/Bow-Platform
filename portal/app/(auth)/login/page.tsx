@@ -135,7 +135,18 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email.trim(), password);
       setCheckingAuth(true); // triggers the PortalLoader overlay immediately
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Login failed");
+      const raw = err instanceof Error ? err.message : "";
+      const isInvalidCredential =
+        raw.includes("auth/invalid-credential") ||
+        raw.includes("auth/wrong-password") ||
+        raw.includes("auth/user-not-found");
+      if (isInvalidCredential) {
+        setMessage(
+          "Incorrect email or password. If you haven't activated your account yet, check your inbox for an activation email."
+        );
+      } else {
+        setMessage(raw || "Login failed");
+      }
     } finally {
       setBusy(false);
     }
@@ -176,6 +187,12 @@ export default function LoginPage() {
         <button disabled={busy || checkingAuth}>{busy || checkingAuth ? "Signing in..." : "Sign in"}</button>
         {message ? <p className="form-message">{message}</p> : null}
       </form>
+      <p style={{ textAlign: "center", fontSize: 12, opacity: 0.4, marginTop: 0 }}>
+        First time?{" "}
+        <a href="/setup" style={{ color: "inherit" }}>
+          Run first-time setup
+        </a>
+      </p>
     </div>
   );
 }
