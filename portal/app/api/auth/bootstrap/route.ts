@@ -37,10 +37,12 @@ export async function POST(req: Request) {
       user = await adminAuth().createUser({ email, password: parsed.data.password, emailVerified: true });
     }
 
+    // Use a generous timeout: Apps Script cold-starts can take 15-20s.
     await portalAction(
       "portal.bootstrap",
       { email, role: "ADMIN" },
-      { email, firebase_uid: user.uid }
+      { email, firebase_uid: user.uid },
+      { timeoutMs: 30000 }
     );
 
     await adminAuth().setCustomUserClaims(user.uid, { role: "ADMIN" });
