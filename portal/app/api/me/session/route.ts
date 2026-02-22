@@ -4,6 +4,11 @@ import { hasPortalBackendConfig } from "@/lib/env";
 import { portalAction } from "@/lib/portal-actions";
 import type { PortalActor } from "@/types/portal";
 
+// Allow up to 25 s on Vercel so that Firebase Admin cold-start (~5 s) +
+// Apps Script cold-start fallback (~8 s) both complete before the platform
+// kills the function. Requires Vercel Pro/Enterprise for values above 10 s.
+export const maxDuration = 25;
+
 interface SessionData {
   email: string;
   role: string;
