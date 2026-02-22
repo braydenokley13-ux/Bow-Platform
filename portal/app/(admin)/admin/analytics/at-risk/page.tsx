@@ -30,6 +30,35 @@ interface AtRiskPayload {
   };
 }
 
+function downloadCsv(rows: AtRiskRow[]) {
+  const headers = [
+    "Email", "Display Name", "Tier", "Risk Score", "Inactivity Days",
+    "XP Velocity 7d", "Claim Fail Rate", "Rubric Avg", "Weakest Dimension", "Drivers"
+  ];
+  const data = rows.map((r) => [
+    r.email,
+    r.display_name,
+    r.risk_tier,
+    String(r.risk_score),
+    String(r.inactivity_days),
+    String(r.xp_velocity_7d),
+    (r.claim_fail_rate_7d * 100).toFixed(1) + "%",
+    r.rubric_overall_avg.toFixed(2),
+    r.weakest_dimension || "",
+    (r.drivers || []).join("; ")
+  ]);
+  const csv = [headers, ...data]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "bow-at-risk.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminAtRiskPage() {
   const [lookbackDays, setLookbackDays] = useState("7");
   const [busy, setBusy] = useState(false);
@@ -80,6 +109,13 @@ export default function AdminAtRiskPage() {
           </label>
           <div style={{ display: "flex", alignItems: "end", gap: 8 }}>
             <button disabled={busy}>{busy ? "Loading..." : "Refresh"}</button>
+            <button
+              className="secondary"
+              disabled={rows.length === 0}
+              onClick={() => downloadCsv(rows)}
+            >
+              Export CSV
+            </button>
           </div>
         </div>
         {summary ? (

@@ -627,6 +627,24 @@ const SHEET_SCHEMAS = {
     'status',
     'created_by',
     'created_at'
+  ],
+  // Notification preferences per student
+  Notification_Preferences: [
+    'email',
+    'shoutouts',
+    'assignments',
+    'leaderboard_changes',
+    'instructor_announcements',
+    'session_recaps',
+    'updated_at'
+  ],
+  // Onboarding step completion state per student
+  Onboarding_State: [
+    'email',
+    'step_id',
+    'done',
+    'dismissed',
+    'updated_at'
   ]
 };
 

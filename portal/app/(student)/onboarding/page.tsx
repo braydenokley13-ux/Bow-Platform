@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PageTitle } from "@/components/page-title";
+import { apiFetch } from "@/lib/client-api";
 
 const STORAGE_KEY = "bow_onboarding_v1";
 
@@ -50,19 +51,48 @@ function saveDone(done: Record<string, boolean>) {
   }
 }
 
+interface OnboardingPayload {
+  ok: boolean;
+  data: { steps: Record<string, { done: boolean; dismissed: boolean }> };
+}
+
 export default function OnboardingPage() {
   const [done, setDone] = useState<Record<string, boolean>>({});
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setDone(loadSaved());
+    const local = loadSaved();
+    setDone(local);
     setMounted(true);
+
+    // Merge server state — server wins for known steps, localStorage fills the rest
+    apiFetch<OnboardingPayload>("/api/me/onboarding")
+      .then((res) => {
+        if (!res.ok || !res.data?.steps) return;
+        setDone((prev) => {
+          const merged: Record<string, boolean> = { ...prev };
+          Object.entries(res.data.steps).forEach(([stepId, state]) => {
+            merged[stepId] = state.done;
+          });
+          saveDone(merged);
+          return merged;
+        });
+      })
+      .catch(() => {
+        // Network failure — localStorage state is still shown
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggle(id: string) {
     setDone((prev) => {
       const next = { ...prev, [id]: !prev[id] };
       saveDone(next);
+      // Fire-and-forget server sync
+      apiFetch("/api/me/onboarding", {
+        method: "POST",
+        json: { step: id, done: next[id] }
+      }).catch(() => {});
       return next;
     });
   }
