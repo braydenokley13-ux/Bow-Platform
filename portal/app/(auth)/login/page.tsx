@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PageTitle } from "@/components/page-title";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/client-api";
+import { PortalLoader } from "@/components/portal-loader";
 
 interface SessionPayload {
   ok: boolean;
@@ -138,6 +139,12 @@ export default function LoginPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  // While verifying an existing Firebase session, show the full-screen loader
+  // instead of the form so users get the fun experience rather than a frozen UI.
+  if (checkingAuth && !message) {
+    return <PortalLoader message="Verifying your access\u2026" />;
   }
 
   return (
