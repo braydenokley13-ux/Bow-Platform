@@ -21,6 +21,35 @@ interface HeatRow {
   overall_avg: number;
 }
 
+function downloadCsv(rows: HeatRow[]) {
+  const headers = [
+    "Module ID", "Module Title", "Core Competency", "Samples",
+    "Avg Decision Quality", "Avg Financial Logic", "Avg Risk Management",
+    "Avg Communication", "Overall Avg"
+  ];
+  const data = rows.map((r) => [
+    r.module_id,
+    r.module_title,
+    r.core_competency,
+    String(r.count),
+    String(r.avg_decision_quality),
+    String(r.avg_financial_logic),
+    String(r.avg_risk_management),
+    String(r.avg_communication),
+    r.overall_avg.toFixed(2)
+  ]);
+  const csv = [headers, ...data]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "bow-mastery-heatmap.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function heatColor(v: number) {
   if (v >= 4.2) return "#1b8f4b";
   if (v >= 3.4) return "#4ca35d";
@@ -59,6 +88,13 @@ export default function AdminMasteryAnalyticsPage() {
           {busy ? "Refreshing..." : "Refresh"}
         </button>
         <span className="pill">Rows: {rows.length}</span>
+        <button
+          className="secondary"
+          disabled={rows.length === 0}
+          onClick={() => downloadCsv(rows)}
+        >
+          Export CSV
+        </button>
       </section>
 
       {error ? (

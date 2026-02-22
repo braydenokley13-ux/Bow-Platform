@@ -4211,6 +4211,189 @@ function actionGetNotifications_(payload) {
   return portalOk_('NOTIFICATIONS_OK', 'Notifications loaded.', out);
 }
 
+function actionMarkNotificationRead_(payload) {
+  const email = assertActorEmail_(payload);
+  const data = payload.data || {};
+  const notificationId = String(data.notification_id || '').trim();
+  if (!notificationId) {
+    return portalErr_('MISSING_FIELD', 'notification_id is required.', null);
+  }
+
+  const d = readSheet('Notifications');
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const nid = String(getRowValue(row, d, 'notification_id', '')).trim();
+    const em = String(getRowValue(row, d, 'email', '')).toLowerCase();
+    if (nid !== notificationId || em !== String(email).toLowerCase()) continue;
+
+    const rowNum = i + 2;
+    setCellByKey(d, rowNum, 'status', 'READ');
+    setCellByKey(d, rowNum, 'read_at', _now());
+    return portalOk_('MARKED_READ', 'Notification marked as read.', null);
+  }
+
+  return portalErr_('NOT_FOUND', 'Notification not found.', null);
+}
+
+function actionGetNotificationPreferences_(payload) {
+  const email = assertActorEmail_(payload);
+  const defaults = {
+    shoutouts: true,
+    assignments: true,
+    leaderboard_changes: true,
+    instructor_announcements: true,
+    session_recaps: true
+  };
+
+  var d;
+  try {
+    d = readSheet('Notification_Preferences');
+  } catch (e) {
+    // Sheet doesn't exist yet — return defaults
+    return portalOk_('PREFS_OK', 'Preferences loaded.', defaults);
+  }
+
+  const want = String(email).toLowerCase();
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const em = String(getRowValue(row, d, 'email', '')).toLowerCase();
+    if (em !== want) continue;
+
+    return portalOk_('PREFS_OK', 'Preferences loaded.', {
+      shoutouts: String(getRowValue(row, d, 'shoutouts', 'true')).toLowerCase() !== 'false',
+      assignments: String(getRowValue(row, d, 'assignments', 'true')).toLowerCase() !== 'false',
+      leaderboard_changes: String(getRowValue(row, d, 'leaderboard_changes', 'true')).toLowerCase() !== 'false',
+      instructor_announcements: String(getRowValue(row, d, 'instructor_announcements', 'true')).toLowerCase() !== 'false',
+      session_recaps: String(getRowValue(row, d, 'session_recaps', 'true')).toLowerCase() !== 'false'
+    });
+  }
+
+  return portalOk_('PREFS_OK', 'Preferences loaded.', defaults);
+}
+
+function actionSetNotificationPreferences_(payload) {
+  const email = assertActorEmail_(payload);
+  const data = payload.data || {};
+
+  const shoutouts = data.shoutouts !== false;
+  const assignments = data.assignments !== false;
+  const leaderboardChanges = data.leaderboard_changes !== false;
+  const instructorAnnouncements = data.instructor_announcements !== false;
+  const sessionRecaps = data.session_recaps !== false;
+
+  var d;
+  try {
+    d = readSheet('Notification_Preferences');
+  } catch (e) {
+    // Sheet doesn't exist yet — create via ensureSheetWithHeaders then re-read
+    ensureSheetWithHeaders('Notification_Preferences',
+      ['email', 'shoutouts', 'assignments', 'leaderboard_changes', 'instructor_announcements', 'session_recaps', 'updated_at']);
+    d = readSheet('Notification_Preferences');
+  }
+
+  const want = String(email).toLowerCase();
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const em = String(getRowValue(row, d, 'email', '')).toLowerCase();
+    if (em !== want) continue;
+
+    const rowNum = i + 2;
+    setCellByKey(d, rowNum, 'shoutouts', shoutouts);
+    setCellByKey(d, rowNum, 'assignments', assignments);
+    setCellByKey(d, rowNum, 'leaderboard_changes', leaderboardChanges);
+    setCellByKey(d, rowNum, 'instructor_announcements', instructorAnnouncements);
+    setCellByKey(d, rowNum, 'session_recaps', sessionRecaps);
+    setCellByKey(d, rowNum, 'updated_at', _now());
+    return portalOk_('PREFS_SAVED', 'Preferences saved.', null);
+  }
+
+  appendObjectRow('Notification_Preferences', {
+    email: want,
+    shoutouts: shoutouts,
+    assignments: assignments,
+    leaderboard_changes: leaderboardChanges,
+    instructor_announcements: instructorAnnouncements,
+    session_recaps: sessionRecaps,
+    updated_at: _now()
+  });
+
+  return portalOk_('PREFS_SAVED', 'Preferences saved.', null);
+}
+
+function actionGetOnboardingStatus_(payload) {
+  const email = assertActorEmail_(payload);
+  const steps = {};
+
+  var d;
+  try {
+    d = readSheet('Onboarding_State');
+  } catch (e) {
+    return portalOk_('ONBOARDING_OK', 'Onboarding status loaded.', { steps: steps });
+  }
+
+  const want = String(email).toLowerCase();
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const em = String(getRowValue(row, d, 'email', '')).toLowerCase();
+    if (em !== want) continue;
+
+    const stepId = String(getRowValue(row, d, 'step_id', '')).trim();
+    if (!stepId) continue;
+
+    steps[stepId] = {
+      done: String(getRowValue(row, d, 'done', 'false')).toLowerCase() === 'true',
+      dismissed: String(getRowValue(row, d, 'dismissed', 'false')).toLowerCase() === 'true'
+    };
+  }
+
+  return portalOk_('ONBOARDING_OK', 'Onboarding status loaded.', { steps: steps });
+}
+
+function actionUpdateOnboarding_(payload) {
+  const email = assertActorEmail_(payload);
+  const data = payload.data || {};
+  const stepId = String(data.step || '').trim();
+  if (!stepId) {
+    return portalErr_('MISSING_FIELD', 'step is required.', null);
+  }
+
+  const done = data.done !== false;
+  const dismissed = data.dismissed === true;
+
+  var d;
+  try {
+    d = readSheet('Onboarding_State');
+  } catch (e) {
+    ensureSheetWithHeaders('Onboarding_State',
+      ['email', 'step_id', 'done', 'dismissed', 'updated_at']);
+    d = readSheet('Onboarding_State');
+  }
+
+  const want = String(email).toLowerCase();
+  for (let i = 0; i < d.rows.length; i++) {
+    const row = d.rows[i];
+    const em = String(getRowValue(row, d, 'email', '')).toLowerCase();
+    const sid = String(getRowValue(row, d, 'step_id', '')).trim();
+    if (em !== want || sid !== stepId) continue;
+
+    const rowNum = i + 2;
+    setCellByKey(d, rowNum, 'done', done);
+    setCellByKey(d, rowNum, 'dismissed', dismissed);
+    setCellByKey(d, rowNum, 'updated_at', _now());
+    return portalOk_('ONBOARDING_UPDATED', 'Step updated.', null);
+  }
+
+  appendObjectRow('Onboarding_State', {
+    email: want,
+    step_id: stepId,
+    done: done,
+    dismissed: dismissed,
+    updated_at: _now()
+  });
+
+  return portalOk_('ONBOARDING_UPDATED', 'Step updated.', null);
+}
+
 function actionGetHelpFaq_(payload) {
   const role = normalizeRole_(payload.actorRole || 'STUDENT');
   const d = readSheet('Help_FAQ');
@@ -5518,6 +5701,11 @@ function handlePortalActionRequest_(payload) {
       'portal.enterRaffle': actionEnterRaffle_,
       'portal.getMyRaffleEntries': actionGetMyRaffleEntries_,
       'portal.getNotifications': actionGetNotifications_,
+      'portal.markNotificationRead': actionMarkNotificationRead_,
+      'portal.me.getNotificationPreferences': actionGetNotificationPreferences_,
+      'portal.me.setNotificationPreferences': actionSetNotificationPreferences_,
+      'portal.me.getOnboardingStatus': actionGetOnboardingStatus_,
+      'portal.me.updateOnboarding': actionUpdateOnboarding_,
       'portal.getHelpFaq': actionGetHelpFaq_,
       'portal.createSupportTicket': actionCreateSupportTicket_,
       'portal.getStatus': actionGetStatus_,

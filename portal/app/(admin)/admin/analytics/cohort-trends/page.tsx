@@ -22,6 +22,32 @@ interface CohortTrendPayload {
   };
 }
 
+function downloadCsv(rows: CohortTrendRow[]) {
+  const headers = [
+    "Week", "XP Total", "Claim Success", "Claim Fail",
+    "Fail Rate", "Rubric Avg", "Rubric Samples"
+  ];
+  const data = rows.map((r) => [
+    r.week,
+    String(r.xp_total),
+    String(r.claims_success),
+    String(r.claims_fail),
+    (r.claim_fail_rate * 100).toFixed(1) + "%",
+    r.rubric_overall_avg.toFixed(2),
+    String(r.rubric_count)
+  ]);
+  const csv = [headers, ...data]
+    .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "bow-cohort-trends.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminCohortTrendsPage() {
   const [weeksBack, setWeeksBack] = useState("8");
   const [busy, setBusy] = useState(false);
@@ -66,6 +92,14 @@ export default function AdminCohortTrendsPage() {
           </label>
           <div style={{ display: "flex", alignItems: "end", gap: 8 }}>
             <button disabled={busy}>{busy ? "Loading..." : "Refresh"}</button>
+            <button
+              type="button"
+              className="secondary"
+              disabled={rows.length === 0}
+              onClick={() => downloadCsv(rows)}
+            >
+              Export CSV
+            </button>
           </div>
         </div>
       </form>

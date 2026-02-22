@@ -44,6 +44,17 @@ export default function NotificationsPage() {
     void load();
   }, [load]);
 
+  async function markRead(id: string) {
+    try {
+      await apiFetch(`/api/notifications/${id}/read`, { method: "POST" });
+      setItems((prev) =>
+        prev.map((n) => (n.notification_id === id ? { ...n, status: "read" } : n))
+      );
+    } catch {
+      // silently ignore — UI still functional
+    }
+  }
+
   const unreadCount = items.filter((n) => n.status !== "read").length;
 
   return (
@@ -89,6 +100,15 @@ export default function NotificationsPage() {
                 <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 2 }}>
                   <span className="pill" style={{ fontSize: 11 }}>{n.kind}</span>
                   {isUnread ? <span className="pill" style={{ fontSize: 11 }}>Unread</span> : null}
+                  {isUnread ? (
+                    <button
+                      className="secondary"
+                      style={{ fontSize: 11, padding: "2px 8px", marginLeft: "auto" }}
+                      onClick={() => void markRead(n.notification_id)}
+                    >
+                      Mark read
+                    </button>
+                  ) : null}
                 </div>
               </div>
             );
