@@ -133,7 +133,7 @@ export default function LoginPage() {
         throw new Error("Firebase client config missing. Add NEXT_PUBLIC_FIREBASE_* environment variables.");
       }
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      setMessage("Signed in. Verifying access...");
+      setCheckingAuth(true); // triggers the PortalLoader overlay immediately
     } catch (err) {
       setMessage(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -144,7 +144,7 @@ export default function LoginPage() {
   // While verifying an existing Firebase session, show the full-screen loader
   // instead of the form so users get the fun experience rather than a frozen UI.
   if (checkingAuth && !message) {
-    return <PortalLoader message="Verifying your access\u2026" />;
+    return <PortalLoader message="Verifying your access…" />;
   }
 
   return (
