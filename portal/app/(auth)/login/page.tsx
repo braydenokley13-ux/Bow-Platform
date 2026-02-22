@@ -40,6 +40,10 @@ function defaultPathForRole(role: string) {
 
 function formatSessionFailureMessage(err: unknown) {
   const detail = err instanceof Error ? err.message : "Unknown session error";
+  const isTimeout = detail === "Request timed out" || /timeout/i.test(detail);
+  if (isTimeout) {
+    return "The server took too long to respond. Please try signing in again — it should be faster now.";
+  }
   return `Signed in, but the server could not verify your portal access (${detail}). Check Firebase Admin and Apps Script env vars in Vercel, then sign in again.`;
 }
 
@@ -74,18 +78,24 @@ export default function LoginPage() {
       setMessage("");
 
       async function openPortal() {
+        let session: SessionPayload | null = null;
         try {
-          const session = await apiFetch<SessionPayload>("/api/me/session");
-          const status = String(session?.data?.status || "ACTIVE").toUpperCase();
-          if (status === "SUSPENDED") {
-            setMessage("Your account is suspended. Contact support.");
-            setCheckingAuth(false);
+          // Use a generous timeout: Firebase Admin cold-start (~5 s) +
+          // Apps Script cold-start fallback (~8 s) can together approach 15 s,
+          // so 25 s gives enough headroom without waiting indefinitely.
+          session = await apiFetch<SessionPayload>("/api/me/session", { timeoutMs: 25000 });
+        } catch (err) {
+          const isTimeout =
+            (err instanceof Error && err.message === "Request timed out") ||
+            (err instanceof Error && /timeout/i.test(err.message));
+          if (isTimeout) {
+            // Server is experiencing a cold start. The user is authenticated via
+            // Firebase; redirect them to the default page. The server-side auth
+            // middleware will complete the portal check on the next request once
+            // Apps Script is warm.
+            router.replace((nextPath ?? defaultPathForRole("STUDENT")) as never);
             return;
           }
-          const destination = nextPath ?? defaultPathForRole(session?.data?.role || "STUDENT");
-          router.replace(destination as never);
-          return;
-        } catch (err) {
           try {
             await signOut(authClient);
           } catch {
@@ -93,7 +103,17 @@ export default function LoginPage() {
           }
           setMessage(formatSessionFailureMessage(err));
           setCheckingAuth(false);
+          return;
         }
+
+        const status = String(session?.data?.status || "ACTIVE").toUpperCase();
+        if (status === "SUSPENDED") {
+          setMessage("Your account is suspended. Contact support.");
+          setCheckingAuth(false);
+          return;
+        }
+        const destination = nextPath ?? defaultPathForRole(session?.data?.role || "STUDENT");
+        router.replace(destination as never);
       }
 
       void openPortal();
