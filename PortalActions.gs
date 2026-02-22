@@ -33,6 +33,11 @@ const PORTAL_IDEMPOTENT_ACTIONS = new Set([
   'portal.admin.upsertQuest'
 ]);
 
+// Request-scoped cache for getActiveSeason_() — the active season is resolved
+// multiple times per request (dashboard, league points, pods) but changes at
+// most once per day, so one read per request is more than sufficient.
+let _activeSeasonCache_ = undefined;
+
 function setPortalSharedSecret(secret) {
   const s = String(secret || '').trim();
   if (!s) throw new Error('Secret is required.');
@@ -230,7 +235,20 @@ function ensureActorAuthorized_(payload) {
     throw new Error('ACCOUNT_SUSPENDED');
   }
 
-  setCellByKey(readSheet('Portal_Users'), pu.rowNum, 'last_login_at', _now());
+  // Throttle last_login_at writes to once per 5 minutes per user.
+  // Previously this ran a setCellByKey on every single request, adding one
+  // Sheets API round-trip (100–300 ms) to every read-only action.
+  try {
+    const loginCacheKey = 'llw_' + actorEmail.replace(/[^a-z0-9]/g, '_').substring(0, 40);
+    const sc = CacheService.getScriptCache();
+    if (!sc.get(loginCacheKey)) {
+      setCellByKey(readSheet('Portal_Users'), pu.rowNum, 'last_login_at', _now());
+      sc.put(loginCacheKey, '1', 300); // 5-minute window
+    }
+  } catch (e) {
+    // If CacheService is unavailable, fall back to always writing.
+    setCellByKey(readSheet('Portal_Users'), pu.rowNum, 'last_login_at', _now());
+  }
 }
 
 function parseJsonSafe_(raw) {
@@ -437,7 +455,7 @@ function getCompletedLessonSet_(email) {
 }
 
 function getActivities_(track, moduleFilter) {
-  const d = readSheet('Activities_Published');
+  const d = _readSheetMaybeCached_('Activities_Published');
   const out = [];
   const trackWant = String(track || '').trim();
   const moduleWant = moduleFilter ? normalizeModuleKey(moduleFilter) : '';
@@ -504,6 +522,75 @@ function rowToObject_(row, d) {
   });
   return obj;
 }
+
+// ── Cross-request CacheService helpers ────────────────────────────────────────
+// Published curriculum and Level_Titles change very rarely (only on admin
+// publish or manual sheet edits). We cache their raw row data for up to
+// CURRICULUM_CACHE_TTL_SECONDS so that each cold-start request doesn't
+// need a Sheets getValues() call for these sheets.
+const CURRICULUM_CACHE_TTL_SECONDS = 600; // 10 minutes
+const CURRICULUM_CACHE_SHEETS = new Set([
+  'Programs_Published', 'Modules_Published', 'Lessons_Published',
+  'Activities_Published', 'Outcomes_Published', 'Level_Titles'
+]);
+
+function _curriculumCacheKey_(sheetName) {
+  return 'sheet_rows_v1_' + sheetName;
+}
+
+// Bust all curriculum CacheService entries (called after publish/rollback).
+function _clearCurriculumCache_() {
+  try {
+    const sc = CacheService.getScriptCache();
+    const keys = Array.from(CURRICULUM_CACHE_SHEETS).map(_curriculumCacheKey_);
+    sc.removeAll(keys);
+  } catch (e) {
+    Logger.log('Curriculum cache clear failed: ' + e.message);
+  }
+}
+
+// Wrapper around readSheet that also checks CacheService for curriculum sheets
+// before falling back to a live Sheets read.
+function _readSheetMaybeCached_(name) {
+  if (!CURRICULUM_CACHE_SHEETS.has(name)) return readSheet(name);
+
+  // Check the request-scoped cache first (already populated by readSheet).
+  if (_sheetCache_[name]) return _sheetCache_[name];
+
+  // Try CacheService for a cross-request hit.
+  try {
+    const sc = CacheService.getScriptCache();
+    const raw = sc.get(_curriculumCacheKey_(name));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const sh = _ss().getSheetByName(name);
+      if (sh) {
+        const idx = buildHeaderIndex(parsed.header);
+        const result = { sh: sh, header: parsed.header, rows: parsed.rows, idx: idx };
+        _sheetCache_[name] = result;
+        return result;
+      }
+    }
+  } catch (e) {
+    // Cache miss or parse error — fall through to live read.
+  }
+
+  // Live read, then populate CacheService for future requests.
+  const result = readSheet(name);
+  try {
+    const sc = CacheService.getScriptCache();
+    const serialized = JSON.stringify({ header: result.header, rows: result.rows });
+    // CacheService has a 100 KB per-key limit; skip caching if data is too large.
+    if (serialized.length < 90000) {
+      sc.put(_curriculumCacheKey_(name), serialized, CURRICULUM_CACHE_TTL_SECONDS);
+    }
+  } catch (e) {
+    Logger.log('Curriculum cache write failed for ' + name + ': ' + e.message);
+  }
+
+  return result;
+}
+// ── End cross-request cache helpers ───────────────────────────────────────────
 
 function listSheetObjects_(sheetName, includeRowNum) {
   const d = readSheet(sheetName);
@@ -856,6 +943,10 @@ function actionAdminPublishCurriculum_(payload) {
   const snapshot = getDraftCurriculumSnapshot_();
   assertPublishRules_(snapshot);
 
+  // Clear cross-request curriculum cache so students see the new content
+  // on their next request without waiting for the TTL to expire.
+  _clearCurriculumCache_();
+
   const batchId = generateId_('PUB');
   const published = {
     programs: applyPublishMetadata_(snapshot.programs, batchId, actorEmail),
@@ -913,6 +1004,8 @@ function getLatestPublishLogRows_() {
 
 function actionAdminRollbackCurriculum_(payload) {
   requirePortalRole_(payload, ['ADMIN']);
+  // Clear curriculum cache so the rolled-back content is visible immediately.
+  _clearCurriculumCache_();
   const data = payload.data || {};
   const requestedBatchId = String(data.publish_batch_id || '').trim();
   const logs = getLatestPublishLogRows_().filter(function(row) {
@@ -970,14 +1063,20 @@ function actionGetPublishedCurriculum_(payload) {
   const data = payload.data || {};
   const trackFilter = String(data.track || '').trim();
 
-  const programs = listSheetObjects_('Programs_Published', false);
-  const modules = listSheetObjects_('Modules_Published', false);
-  const lessons = listSheetObjects_('Lessons_Published', false);
-  const activities = listSheetObjects_('Activities_Published', false).filter(function(row) {
+  // Use cross-request CacheService cache for all Published sheets.
+  function _listCached_(sheetName) {
+    const d = _readSheetMaybeCached_(sheetName);
+    return d.rows.map(function(row, idx) { return rowToObject_(row, d); });
+  }
+
+  const programs = _listCached_('Programs_Published');
+  const modules = _listCached_('Modules_Published');
+  const lessons = _listCached_('Lessons_Published');
+  const activities = _listCached_('Activities_Published').filter(function(row) {
     if (!trackFilter) return true;
     return String(row.track || '').trim() === trackFilter;
   });
-  const outcomes = listSheetObjects_('Outcomes_Published', false);
+  const outcomes = _listCached_('Outcomes_Published');
 
   return portalOk_('PUBLISHED_CURRICULUM_OK', 'Published curriculum loaded.', {
     programs: programs,
@@ -1019,7 +1118,8 @@ function findClaimContextByCodeForEmail_(email, claimCode) {
 }
 
 function findLessonKeyByTrackModuleLesson_(track, moduleId, lessonId) {
-  const acts = listSheetObjects_('Activities_Published', false);
+  const d = _readSheetMaybeCached_('Activities_Published');
+  const acts = d.rows.map(function(row) { return rowToObject_(row, d); });
   for (let i = 0; i < acts.length; i++) {
     const row = acts[i];
     if (String(row.track || '') !== String(track || '')) continue;
@@ -1206,7 +1306,8 @@ function actionAdminScoreJournalEntry_(payload) {
 }
 
 function getModuleMetaMap_() {
-  const modules = listSheetObjects_('Modules_Published', false);
+  const d = _readSheetMaybeCached_('Modules_Published');
+  const modules = d.rows.map(function(row) { return rowToObject_(row, d); });
   const map = new Map();
   modules.forEach(function(row) {
     map.set(String(row.module_id || ''), {
@@ -1800,19 +1901,27 @@ function getSeasonById_(seasonId) {
 }
 
 function getActiveSeason_() {
+  // Return the request-scoped cached value if already resolved this execution.
+  if (_activeSeasonCache_ !== undefined) return _activeSeasonCache_;
+
   const now = Date.now();
   const rows = listSeasons_().filter(function(row) {
     return upper(row.status || '') === 'ACTIVE';
   });
-  if (!rows.length) return null;
 
-  for (let i = 0; i < rows.length; i++) {
-    const startsAt = dateMs_(rows[i].starts_at);
-    const endsAt = dateMs_(rows[i].ends_at);
-    const inWindow = (!startsAt || startsAt <= now) && (!endsAt || endsAt >= now);
-    if (inWindow) return rows[i];
+  let result = null;
+  if (rows.length) {
+    for (let i = 0; i < rows.length; i++) {
+      const startsAt = dateMs_(rows[i].starts_at);
+      const endsAt = dateMs_(rows[i].ends_at);
+      const inWindow = (!startsAt || startsAt <= now) && (!endsAt || endsAt >= now);
+      if (inWindow) { result = rows[i]; break; }
+    }
+    if (!result) result = rows[0];
   }
-  return rows[0];
+
+  _activeSeasonCache_ = result;
+  return result;
 }
 
 function clearOtherActiveSeasons_(keepSeasonId) {
@@ -3209,8 +3318,13 @@ function submitClaimFromPortal_(payload) {
     theme: claim.theme
   });
 
-  recomputeCompletionAndPasses();
-  rebuildLeaderboards();
+  // recomputeCompletionAndPasses() and rebuildLeaderboards() used to run here
+  // synchronously, adding 3–6 s to every claim submission. They are now handled
+  // by a time-based Apps Script trigger (recomputeAndRebuild, every 5 min) so
+  // the portal response is returned immediately after the XP write.
+  // To set up the trigger: Apps Script editor → Triggers → recomputeAndRebuild
+  //   → Time-driven → Minutes timer → Every 5 minutes.
+  _markRecomputeNeeded_();
 
   try {
     const next = cat ? findCatalogByNext(track, moduleKey, cat.next_lesson_id) : null;
