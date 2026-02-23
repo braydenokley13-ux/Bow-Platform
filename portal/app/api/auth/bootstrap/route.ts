@@ -1,7 +1,6 @@
 import { z } from "zod";
 import { adminAuth } from "@/lib/firebase-admin";
 import { badRequest, forbidden, ok, serverError } from "@/lib/api-response";
-import { portalAction } from "@/lib/portal-actions";
 
 const bodySchema = z.object({
   email: z.string().email(),
@@ -37,52 +36,15 @@ export async function POST(req: Request) {
       user = await adminAuth().createUser({ email, password: parsed.data.password, emailVerified: true });
     }
 
-    // Retry up to 3 times to survive Apps Script cold-starts.
-    // If a retry gets BOOTSTRAP_LOCKED, the first attempt succeeded but its
-    // HTTP response was lost — treat that as success and continue.
-    const MAX_RETRIES = 3;
-    let lastError: unknown;
-    let bootstrapOk = false;
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        await portalAction(
-          "portal.bootstrap",
-          { email, role: "ADMIN" },
-          { email, firebase_uid: user.uid },
-          { timeoutMs: 30000 }
-        );
-        bootstrapOk = true;
-        break;
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : "";
-        if (msg.includes("BOOTSTRAP_LOCKED")) {
-          if (attempt > 1) {
-            // First call succeeded but response was lost; treat as success.
-            bootstrapOk = true;
-          }
-          // If first attempt got BOOTSTRAP_LOCKED, propagate it as a real error.
-          lastError = err;
-          break;
-        }
-        lastError = err;
-        if (attempt < MAX_RETRIES) {
-          await new Promise((r) => setTimeout(r, attempt * 2000));
-        }
-      }
-    }
-
-    if (!bootstrapOk) {
-      throw lastError;
-    }
-
     await adminAuth().setCustomUserClaims(user.uid, { role: "ADMIN" });
+
+    // The Apps Script sheet record is created automatically on first login:
+    // portal.getSession triggers ensureActorAuthorized_() which upserts a
+    // Portal_Users row using actorRole from the Firebase claims ("ADMIN").
 
     return ok({ ok: true, email, role: "ADMIN" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Bootstrap failed";
-    if (msg.includes("BOOTSTRAP_LOCKED")) {
-      return forbidden("An admin already exists. Remove BOOTSTRAP_SECRET from your environment to keep bootstrap disabled.");
-    }
     return serverError(msg);
   }
 }
