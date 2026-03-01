@@ -81,7 +81,7 @@ export default function LoginPage() {
             return;
           }
           try {
-            await signOut(auth);
+            await signOut(auth!);
           } catch {
             // ignore
           }
