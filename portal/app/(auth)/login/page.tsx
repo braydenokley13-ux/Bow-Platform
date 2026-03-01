@@ -2,10 +2,11 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/client-api";
+import { clearCachedSession, writeCachedSession } from "@/lib/session-cache";
 import { BowArcade } from "@/components/bow-arcade";
 
 interface SessionPayload {
@@ -69,35 +70,44 @@ export default function LoginPage() {
       setMessage("");
 
       async function openPortal() {
-        let session: SessionPayload | null = null;
+        // Fast-path: read role from the locally-cached Firebase ID token (no
+        // network call needed). The role custom claim was set during account
+        // activation and is embedded in the signed JWT.
+        let roleFromClaims = "STUDENT";
         try {
-          session = await apiFetch<SessionPayload>("/api/me/session", { timeoutMs: 12000 });
-        } catch (err) {
-          const isTimeout =
-            err instanceof Error &&
-            (err.message === "Request timed out" || /timeout/i.test(err.message));
-          if (isTimeout) {
-            router.replace((nextPath ?? defaultPathForRole("STUDENT")) as never);
-            return;
-          }
-          try {
-            await signOut(auth!);
-          } catch {
-            // ignore
-          }
-          setMessage("Something went wrong verifying your account. Please try again.");
-          setCheckingAuth(false);
-          return;
+          const tokenResult = await user.getIdTokenResult();
+          roleFromClaims = String(tokenResult.claims.role || "STUDENT").toUpperCase();
+        } catch {
+          // Ignore — fall back to STUDENT role.
         }
 
-        const status = String(session?.data?.status || "ACTIVE").toUpperCase();
-        if (status === "SUSPENDED") {
-          setMessage("Your account has been suspended. Please contact support.");
-          setCheckingAuth(false);
-          return;
-        }
-        const destination = nextPath ?? defaultPathForRole(session?.data?.role || "STUDENT");
+        // Write an optimistic session cache so SessionGuard on the destination
+        // page renders immediately without making another API call.
+        writeCachedSession(roleFromClaims, "ACTIVE");
+
+        // Redirect right away — don't block on the Apps Script session check.
+        const destination = nextPath ?? defaultPathForRole(roleFromClaims);
         router.replace(destination as never);
+
+        // Background: verify status (catches SUSPENDED accounts). If the check
+        // returns before the page unloads, update the cache; the SessionGuard
+        // will pick it up on any subsequent navigation.
+        void apiFetch<SessionPayload>("/api/me/session", { timeoutMs: 12000 })
+          .then((session) => {
+            const role = String(session?.data?.role || roleFromClaims).toUpperCase();
+            const status = String(session?.data?.status || "ACTIVE").toUpperCase();
+            if (status === "SUSPENDED") {
+              // Clear the optimistic cache so the SessionGuard will redirect
+              // the user to login as soon as any protected page is visited.
+              clearCachedSession();
+            } else {
+              writeCachedSession(role, status);
+            }
+          })
+          .catch(() => {
+            // Background check failed — optimistic cache remains; the user
+            // stays logged in. This matches existing timeout-fallback behavior.
+          });
       }
 
       void openPortal();
