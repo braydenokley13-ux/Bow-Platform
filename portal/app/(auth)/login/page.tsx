@@ -1,9 +1,9 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PageTitle } from "@/components/page-title";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/client-api";
 import { PortalLoader } from "@/components/portal-loader";
@@ -39,14 +39,6 @@ function defaultPathForRole(role: string) {
   return "/home";
 }
 
-function formatSessionFailureMessage(err: unknown) {
-  const detail = err instanceof Error ? err.message : "Unknown session error";
-  const isTimeout = detail === "Request timed out" || /timeout/i.test(detail);
-  if (isTimeout) {
-    return "The server took too long to respond. Please try signing in again — it should be faster now.";
-  }
-  return `Signed in, but the server could not verify your portal access (${detail}). Check Firebase Admin and Apps Script env vars in Vercel, then sign in again.`;
-}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -55,7 +47,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(false);
   const [message, setMessage] = useState("");
 
   const nextPath = useMemo(() => sanitizeNextPath(searchParams.get("next")), [searchParams]);
@@ -68,10 +60,8 @@ export default function LoginPage() {
       return;
     }
 
-    const authClient = auth;
-    const unsubscribe = onAuthStateChanged(authClient, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (!user) {
-        setCheckingAuth(false);
         return;
       }
 
@@ -81,35 +71,28 @@ export default function LoginPage() {
       async function openPortal() {
         let session: SessionPayload | null = null;
         try {
-          // Use a generous timeout: Firebase Admin cold-start (~5 s) +
-          // Apps Script cold-start fallback (~8 s) can together approach 15 s,
-          // so 25 s gives enough headroom without waiting indefinitely.
-          session = await apiFetch<SessionPayload>("/api/me/session", { timeoutMs: 25000 });
+          session = await apiFetch<SessionPayload>("/api/me/session", { timeoutMs: 12000 });
         } catch (err) {
           const isTimeout =
-            (err instanceof Error && err.message === "Request timed out") ||
-            (err instanceof Error && /timeout/i.test(err.message));
+            err instanceof Error &&
+            (err.message === "Request timed out" || /timeout/i.test(err.message));
           if (isTimeout) {
-            // Server is experiencing a cold start. The user is authenticated via
-            // Firebase; redirect them to the default page. The server-side auth
-            // middleware will complete the portal check on the next request once
-            // Apps Script is warm.
             router.replace((nextPath ?? defaultPathForRole("STUDENT")) as never);
             return;
           }
           try {
-            await signOut(authClient);
+            await signOut(auth);
           } catch {
-            // ignore signout failures; user can still retry manually
+            // ignore
           }
-          setMessage(formatSessionFailureMessage(err));
+          setMessage("Something went wrong verifying your account. Please try again.");
           setCheckingAuth(false);
           return;
         }
 
         const status = String(session?.data?.status || "ACTIVE").toUpperCase();
         if (status === "SUSPENDED") {
-          setMessage("Your account is suspended. Contact support.");
+          setMessage("Your account has been suspended. Please contact support.");
           setCheckingAuth(false);
           return;
         }
@@ -130,10 +113,10 @@ export default function LoginPage() {
     try {
       const auth = getFirebaseAuth();
       if (!auth) {
-        throw new Error("Firebase client config missing. Add NEXT_PUBLIC_FIREBASE_* environment variables.");
+        throw new Error("Sign-in is not available right now. Please try again shortly.");
       }
       await signInWithEmailAndPassword(auth, email.trim(), password);
-      setCheckingAuth(true); // triggers the PortalLoader overlay immediately
+      setCheckingAuth(true);
     } catch (err) {
       const raw = err instanceof Error ? err.message : "";
       const isInvalidCredential =
@@ -141,38 +124,41 @@ export default function LoginPage() {
         raw.includes("auth/wrong-password") ||
         raw.includes("auth/user-not-found");
       if (isInvalidCredential) {
-        setMessage(
-          "Incorrect email or password. If you haven't activated your account yet, check your inbox for an activation email."
-        );
+        setMessage("Incorrect email or password. Need to activate your account? Check your inbox.");
       } else {
-        setMessage(raw || "Login failed");
+        setMessage(raw || "Sign-in failed. Please try again.");
       }
     } finally {
       setBusy(false);
     }
   }
 
-  // While verifying an existing Firebase session, show the full-screen loader
-  // instead of the form so users get the fun experience rather than a frozen UI.
   if (checkingAuth && !message) {
-    return <PortalLoader message="Verifying your access…" />;
+    return <PortalLoader message="Signing you in…" />;
   }
 
   return (
     <div className="auth-page grid gap-lg">
-      <PageTitle title="Portal Login" subtitle="Invite-only access for BOW class users" />
+      <div style={{ textAlign: "center" }}>
+        <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>Welcome back!</h1>
+        <p style={{ margin: "6px 0 0", opacity: 0.55, fontSize: 14 }}>Sign in to your account</p>
+      </div>
 
-      {reason === "session-check" ? (
+      {reason === "session-check" || reason === "auth-timeout" ? (
         <div className="banner banner-warn">Your session expired. Please sign in again.</div>
-      ) : null}
-      {reason === "auth-timeout" ? (
-        <div className="banner banner-warn">Auth check timed out. Please sign in again.</div>
       ) : null}
 
       <form className="card auth-form form-stack" onSubmit={onSubmit}>
         <label className="field">
           <span>Email</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            placeholder="you@example.com"
+            required
+          />
         </label>
         <label className="field">
           <span>Password</span>
@@ -180,18 +166,28 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            placeholder="Your password"
             required
-            minLength={8}
           />
         </label>
-        <button disabled={busy || checkingAuth}>{busy || checkingAuth ? "Signing in..." : "Sign in"}</button>
+
+        <div style={{ textAlign: "right", marginTop: -4 }}>
+          <Link href="/forgot-password" style={{ fontSize: 13, opacity: 0.65 }}>
+            Forgot password?
+          </Link>
+        </div>
+
+        <button disabled={busy || checkingAuth} style={{ marginTop: 4 }}>
+          {busy || checkingAuth ? "Signing in..." : "Sign in"}
+        </button>
+
         {message ? <p className="form-message">{message}</p> : null}
       </form>
-      <p style={{ textAlign: "center", fontSize: 12, opacity: 0.4, marginTop: 0 }}>
-        First time?{" "}
-        <a href="/setup" style={{ color: "inherit" }}>
-          Run first-time setup
-        </a>
+
+      <p style={{ textAlign: "center", fontSize: 13, opacity: 0.6, marginTop: 0 }}>
+        New here?{" "}
+        <Link href="/activate">Activate your account</Link>
       </p>
     </div>
   );
