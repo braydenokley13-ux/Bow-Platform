@@ -66,6 +66,8 @@ export default function LoginPage() {
         return;
       }
 
+      const currentUser = user; // narrowed to non-null for async closure below
+
       setCheckingAuth(true);
       setMessage("");
 
@@ -75,7 +77,7 @@ export default function LoginPage() {
         // activation and is embedded in the signed JWT.
         let roleFromClaims = "STUDENT";
         try {
-          const tokenResult = await user.getIdTokenResult();
+          const tokenResult = await currentUser.getIdTokenResult();
           roleFromClaims = String(tokenResult.claims.role || "STUDENT").toUpperCase();
         } catch {
           // Ignore — fall back to STUDENT role.
