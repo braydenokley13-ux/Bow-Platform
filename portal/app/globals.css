@@ -2561,4 +2561,430 @@ header .logo {
   .skeleton::after {
     animation: none !important;
   }
+
+  .ba-pulse,
+  .dd-dot,
+  .dd-shrink,
+  .sf-tile,
+  .wb-timer-fill {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════
+   BOW ARCADE — full-screen mini-game loading experience
+   ═══════════════════════════════════════════════════════ */
+
+.bow-arcade {
+  position: fixed;
+  inset: 0;
+  background: var(--color-bg);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Top bar ── */
+.ba-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.ba-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--color-brand);
+  flex: 1;
+}
+
+.ba-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.ba-pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  animation: ba-pulse 1.4s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes ba-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50%       { opacity: 1;   transform: scale(1);    }
+}
+
+.ba-icon-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 5px 7px;
+  border-radius: var(--radius-sm);
+  opacity: 0.65;
+  transition: opacity var(--motion-fast);
+  line-height: 1;
+}
+
+.ba-icon-btn:hover { opacity: 1; }
+
+/* ── Game tabs ── */
+.ba-tabs {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+
+.ba-tabs::-webkit-scrollbar { display: none; }
+
+.ba-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all var(--motion-fast);
+  color: var(--color-text);
+}
+
+.ba-tab-icon { font-size: 22px; }
+
+.ba-tab.active {
+  background: var(--color-brand);
+  color: #fff;
+  border-color: var(--color-brand);
+}
+
+/* ── Play area ── */
+.ba-play {
+  flex: 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* ── Score strip ── */
+.ba-score-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.ba-score-val {
+  color: var(--color-brand);
+  font-size: 22px;
+}
+
+.ba-best {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+
+.ba-record-banner {
+  color: #d4900a;
+  animation: ba-record-pop 0.4s var(--motion-ease) both;
+}
+
+@keyframes ba-record-pop {
+  from { transform: scale(0.5); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* ── Lives ── */
+.ba-lives {
+  display: flex;
+  gap: 4px;
+  font-size: 20px;
+  align-items: center;
+}
+
+/* ── Records overlay ── */
+.ba-records {
+  position: absolute;
+  inset: 0;
+  background: var(--color-bg);
+  z-index: 10;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  animation: rise-in var(--motion-medium) var(--motion-ease) both;
+}
+
+.ba-records-title {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.ba-records-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+}
+
+.ba-records-score {
+  color: var(--color-brand);
+  font-size: 22px;
+  font-weight: 800;
+}
+
+/* ─── Dot Dash ───────────────────────────────────────── */
+
+.dd-dot {
+  position: absolute;
+  border-radius: 50%;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  animation: dd-pop 0.12s var(--motion-ease) both;
+}
+
+@keyframes dd-pop {
+  from { transform: translate(-50%, -50%) scale(0); }
+  to   { transform: translate(-50%, -50%) scale(1); }
+}
+
+.dd-shrink {
+  animation:
+    dd-pop 0.12s var(--motion-ease) both,
+    dd-disappear var(--dd-duration, 1.5s) linear forwards;
+}
+
+@keyframes dd-disappear {
+  0%   { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  80%  { opacity: 0.6; }
+  100% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+}
+
+/* ─── Brain Math ─────────────────────────────────────── */
+
+.bm-level {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.45;
+  margin-bottom: 6px;
+}
+
+.bm-streak {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e07b00;
+  min-height: 22px;
+  margin-bottom: 4px;
+}
+
+.bm-problem {
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: -1px;
+  margin-bottom: 24px;
+  color: var(--color-text);
+}
+
+.bm-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.bm-btn {
+  height: 72px;
+  border-radius: var(--radius-lg);
+  font-size: 26px;
+  font-weight: 700;
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  color: var(--color-text);
+  transition: background var(--motion-fast), transform 60ms;
+}
+
+.bm-btn:active { transform: scale(0.95); }
+.bm-btn.flash-correct { background: var(--color-success); color: #fff; border-color: var(--color-success); }
+.bm-btn.flash-wrong   { background: var(--color-danger);  color: #fff; border-color: var(--color-danger);  }
+
+/* ─── Simon Flash ────────────────────────────────────── */
+
+.sf-round {
+  font-size: 13px;
+  font-weight: 700;
+  opacity: 0.5;
+  margin-bottom: 14px;
+}
+
+.sf-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.sf-tile {
+  width: 82px;
+  height: 82px;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: filter var(--motion-fast), transform var(--motion-fast);
+  filter: brightness(0.35);
+  border: 3px solid transparent;
+}
+
+.sf-tile.lit        { filter: brightness(1.1);  transform: scale(1.1);  }
+.sf-tile.player-tap { filter: brightness(0.7);  transform: scale(0.92); }
+
+.sf-tile.shake {
+  animation: sf-shake 0.35s var(--motion-ease);
+}
+
+@keyframes sf-shake {
+  0%, 100% { transform: translateX(0);    }
+  25%       { transform: translateX(-9px); }
+  75%       { transform: translateX(9px);  }
+}
+
+.sf-phase {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-brand);
+  margin-top: 14px;
+  min-height: 22px;
+}
+
+/* ─── Reflex Ring ────────────────────────────────────── */
+
+.rr-feedback {
+  font-size: 26px;
+  font-weight: 900;
+  min-height: 38px;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.rr-feedback.perfect { color: var(--color-success); }
+.rr-feedback.ok      { color: var(--color-warn);    }
+.rr-feedback.miss    { color: var(--color-danger);  }
+
+/* ─── Word Blitz ─────────────────────────────────────── */
+
+.wb-timer-bar {
+  width: 100%;
+  max-width: 320px;
+  height: 8px;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.wb-timer-fill {
+  height: 100%;
+  background: var(--color-brand);
+  border-radius: var(--radius-pill);
+  transition: width 0.9s linear;
+}
+
+.wb-timer-fill.low { background: var(--color-danger); }
+
+.wb-answer {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 72px;
+  margin-bottom: 14px;
+}
+
+.wb-answer-slot {
+  width: 50px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--color-border);
+  background: var(--color-surface-soft);
+  font-size: 24px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text);
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.wb-answer-slot.filled {
+  border-style: solid;
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+}
+
+.wb-letters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.wb-letter {
+  width: 50px;
+  height: 60px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--color-border);
+  background: var(--color-surface);
+  font-size: 24px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-text);
+  transition: all var(--motion-fast);
+  user-select: none;
+}
+
+.wb-letter:hover:not(.used) {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+}
+
+.wb-letter.used {
+  opacity: 0.22;
+  cursor: default;
 }

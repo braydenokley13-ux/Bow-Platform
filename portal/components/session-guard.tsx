@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { BowArcade } from "@/components/bow-arcade";
 import { usePathname, useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase-client";
@@ -210,12 +211,7 @@ export function SessionGuard({
   }
 
   if (!ready) {
-    return (
-      <div className="card session-guard" role="status" aria-live="polite">
-        <div className="kicker">Session Check</div>
-        <p className="session-guard-copy">Verifying your portal access...</p>
-      </div>
-    );
+    return <BowArcade statusMessage="Verifying your access\u2026" />;
   }
 
   return <>{children}</>;
