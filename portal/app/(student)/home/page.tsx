@@ -2,190 +2,130 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { PageTitle } from "@/components/page-title";
-import { PageSection } from "@/components/page-section";
 import { StatCard } from "@/components/stat-card";
-import { DataTable } from "@/components/data-table";
-import { ActionBar } from "@/components/action-bar";
 import { EmptyState } from "@/components/empty-state";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { apiFetch } from "@/lib/client-api";
-
-interface HomeFeedAction {
-  kind: string;
-  title: string;
-  subtitle: string;
-  href: string;
-  priority: number;
-}
-
-interface HomeFeedEvent {
-  event_id: string;
-  title: string;
-  track: string;
-  module: string;
-  open_at: string;
-  close_at: string;
-  already_submitted: boolean;
-}
+import { getFirebaseAuth } from "@/lib/firebase-client";
 
 interface HomeFeedPayload {
   ok: boolean;
   data: {
-    season: {
-      season_id: string;
-      title: string;
-      starts_at: string;
-      ends_at: string;
-      status: string;
-    } | null;
-    quick_actions: HomeFeedAction[];
-    active_events: HomeFeedEvent[];
-    pod: {
-      pod_id: string;
-      pod_name: string;
-      rank: number;
-      points: number;
-      members: Array<{ email: string; display_name: string }>;
-    } | null;
     my_standing: { rank: number; points: number } | null;
-    rewards: {
-      streak_days: number;
-      recent_points: Array<{ ts: string; delta_points: number; reason: string }>;
-    };
+    rewards: { streak_days: number };
   };
 }
 
-export default function StudentHomeFeedPage() {
-  const [busy, setBusy]       = useState(false);
-  const [error, setError]     = useState<string | null>(null);
-  const [payload, setPayload] = useState<HomeFeedPayload | null>(null);
+interface ActiveRaffle {
+  raffle_id: string;
+  title: string;
+  prize: string;
+  status: string;
+  closes_at?: string;
+}
 
-  async function load() {
-    setBusy(true);
-    setError(null);
-    try {
-      const json = await apiFetch<HomeFeedPayload>("/api/me/home-feed");
-      setPayload(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load home feed");
-    } finally {
-      setBusy(false);
+export default function StudentHomePage() {
+  const auth = getFirebaseAuth();
+  const firebaseUser = auth?.currentUser;
+  const displayName =
+    firebaseUser?.displayName ??
+    firebaseUser?.email?.split("@")[0] ??
+    "there";
+
+  const [xp, setXp] = useState<number | null>(null);
+  const [streak, setStreak] = useState<number>(0);
+  const [raffle, setRaffle] = useState<ActiveRaffle | null | undefined>(undefined);
+  const [ticketBalance, setTicketBalance] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const [feedRes, activeRes, balanceRes] = await Promise.allSettled([
+          apiFetch<HomeFeedPayload>("/api/me/home-feed"),
+          apiFetch<{ ok: boolean; data: { raffle: ActiveRaffle | null } }>("/api/raffles/active"),
+          apiFetch<{ ok: boolean; data: { available: number } }>("/api/raffles/me/balance")
+        ]);
+
+        if (feedRes.status === "fulfilled") {
+          setXp(feedRes.value.data?.my_standing?.points ?? 0);
+          setStreak(feedRes.value.data?.rewards?.streak_days ?? 0);
+        }
+        if (activeRes.status === "fulfilled") {
+          setRaffle(activeRes.value.data?.raffle ?? null);
+        } else {
+          setRaffle(null);
+        }
+        if (balanceRes.status === "fulfilled") {
+          setTicketBalance(balanceRes.value.data?.available ?? 0);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load");
+      }
     }
-  }
-
-  useEffect(() => { void load(); }, []);
-
-  const d = payload?.data;
+    void load();
+  }, []);
 
   return (
     <div className="grid gap-14">
-      <PageTitle title="Daily Home" subtitle="Your next 3 best actions, live competition, and team momentum" />
-
-      <PageSection
-        actions={
-          <ActionBar>
-            <button onClick={() => void load()} disabled={busy}>
-              {busy ? "Refreshing..." : "Refresh home feed"}
-            </button>
-            <span className="pill">Private cohort mode</span>
-          </ActionBar>
-        }
-      >
-        <p className="m-0 text-muted">Start here each day for your highest-value next actions.</p>
-      </PageSection>
+      <header className="stack-4">
+        <h1 className="title-24">Hey, {displayName}!</h1>
+        <p className="text-muted m-0">Here&apos;s everything you need today.</p>
+      </header>
 
       {error ? <FeedbackBanner kind="error">{error}</FeedbackBanner> : null}
 
       <div className="grid grid-2">
         <StatCard
-          label="Active Season"
-          value={d?.season?.title || "No active season"}
-          hint={d?.season ? `Ends: ${d.season.ends_at ? new Date(d.season.ends_at).toLocaleString() : "TBD"}` : ""}
+          label="Your XP"
+          value={xp != null ? `${xp} XP` : "—"}
+          hint={streak ? `${streak}-day streak` : "Start your streak today!"}
           accent="brand"
         />
         <StatCard
-          label="League Rank"
-          value={d?.my_standing?.rank ? `#${d.my_standing.rank}` : "Not ranked yet"}
-          hint={`Points: ${d?.my_standing?.points ?? 0} | Streak: ${d?.rewards?.streak_days ?? 0} days`}
+          label="Raffle Tickets"
+          value={ticketBalance != null ? `${ticketBalance} ticket${ticketBalance !== 1 ? "s" : ""}` : "—"}
+          hint="1 ticket per 100 XP"
           accent="info"
         />
       </div>
 
-      <PageSection title="Your 3 Next Actions">
-        {(d?.quick_actions || []).length ? (
-          <div className="grid grid-2">
-            {(d?.quick_actions || []).map((action, idx) => (
-              <article key={`${action.kind}-${idx}`} className="card p-12 stack-8">
-                <div className="pill">{action.kind}</div>
-                <div className="fw-700">{action.title}</div>
-                <p className="m-0 text-muted">{action.subtitle}</p>
-                <a href={action.href}>Open</a>
-              </article>
-            ))}
+      <section className="card stack-8">
+        <h2 className="title-16">Find Activities</h2>
+        <p className="m-0 text-muted">Browse lessons and earn XP for completing them.</p>
+        <Link href="/activities">Browse activities →</Link>
+      </section>
+
+      <section className="card stack-8">
+        <h2 className="title-16">Current Raffle</h2>
+        {raffle === undefined ? (
+          <p className="m-0 text-muted">Loading...</p>
+        ) : raffle ? (
+          <div className="stack-6">
+            <div className="fw-700">{raffle.title}</div>
+            <p className="m-0">
+              Prize: <strong>{raffle.prize}</strong>
+            </p>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <span className="pill">{raffle.status}</span>
+              {raffle.closes_at ? (
+                <span style={{ fontSize: 12, opacity: 0.55 }}>
+                  Closes {new Date(raffle.closes_at).toLocaleDateString()}
+                </span>
+              ) : null}
+            </div>
+            <Link href="/raffles">Enter raffle →</Link>
           </div>
         ) : (
-          <EmptyState title="No recommended actions" body="No recommended actions yet." />
+          <EmptyState title="No active raffle" body="Check back soon!" />
         )}
-      </PageSection>
+      </section>
 
-      <div className="grid grid-2">
-        <PageSection title="Live Events">
-          {(d?.active_events || []).length ? (
-            <div className="stack-8">
-              {(d?.active_events || []).slice(0, 3).map((event) => (
-                <div key={event.event_id} className="card p-12 stack-6">
-                  <div className="fw-700">{event.title}</div>
-                  <div className="muted-13">
-                    Track {event.track} | Module {event.module || "Any"}
-                  </div>
-                  <div>
-                    {event.already_submitted ? <span className="pill">Submitted</span> : <span className="pill">Open</span>}
-                  </div>
-                </div>
-              ))}
-              <Link href="/events">Open all events →</Link>
-            </div>
-          ) : (
-            <EmptyState title="No active events" body="No active events right now." />
-          )}
-        </PageSection>
-
-        <PageSection title="Your Pod">
-          {d?.pod ? (
-            <div className="stack-8">
-              <div>
-                <strong>{d.pod.pod_name}</strong>
-              </div>
-              <div className="muted-13">Rank #{d.pod.rank || "-"} | {d.pod.points || 0} points</div>
-              <div className="stack-4">
-                {(d.pod.members || []).slice(0, 5).map((m) => (
-                  <div key={m.email}>{m.display_name || m.email}</div>
-                ))}
-              </div>
-              <Link href="/pods">Open pod page</Link>
-            </div>
-          ) : (
-            <EmptyState title="No pod assignment" body="You are not assigned to a pod yet." />
-          )}
-        </PageSection>
-      </div>
-
-      <PageSection title="Recent Reward Activity">
-        {(d?.rewards?.recent_points || []).length ? (
-          <DataTable headers={["When", "Points", "Reason"]}>
-            {(d?.rewards?.recent_points || []).slice(0, 8).map((row, idx) => (
-              <tr key={`${row.ts}-${idx}`}>
-                <td>{new Date(row.ts).toLocaleString()}</td>
-                <td>{row.delta_points}</td>
-                <td>{row.reason}</td>
-              </tr>
-            ))}
-          </DataTable>
-        ) : (
-          <EmptyState title="No reward entries" body="No recent reward entries yet." />
-        )}
-      </PageSection>
+      <section className="card stack-8">
+        <h2 className="title-16">Your Progress</h2>
+        <p className="m-0 text-muted">See how far you&apos;ve come across your lessons.</p>
+        <Link href="/progress">View progress →</Link>
+      </section>
     </div>
   );
 }
