@@ -6,7 +6,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebas
 import { useRouter, useSearchParams } from "next/navigation";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 import { apiFetch } from "@/lib/client-api";
-import { PortalLoader } from "@/components/portal-loader";
+import { BowArcade } from "@/components/bow-arcade";
 
 interface SessionPayload {
   ok: boolean;
@@ -134,7 +134,7 @@ export default function LoginPage() {
   }
 
   if (checkingAuth && !message) {
-    return <PortalLoader message="Signing you in…" />;
+    return <BowArcade statusMessage="Signing you in\u2026" />;
   }
 
   return (
