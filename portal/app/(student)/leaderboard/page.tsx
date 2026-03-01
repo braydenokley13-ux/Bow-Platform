@@ -6,6 +6,7 @@ import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 
 interface LeaderboardRow {
@@ -23,7 +24,7 @@ interface LeaderboardPayload {
 
 export default function LeaderboardPage() {
   const [track, setTrack] = useState("all");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
 
@@ -43,6 +44,8 @@ export default function LeaderboardPage() {
   useEffect(() => {
     void load(track);
   }, [load, track]);
+
+  if (busy && !rows.length) return <BowArcade statusMessage="Loading leaderboard\u2026" />;
 
   return (
     <div className="grid gap-14">

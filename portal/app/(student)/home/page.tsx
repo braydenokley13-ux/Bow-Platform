@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { StatCard } from "@/components/stat-card";
 import { EmptyState } from "@/components/empty-state";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 import { getFirebaseAuth } from "@/lib/firebase-client";
 
@@ -32,6 +33,7 @@ export default function StudentHomePage() {
     firebaseUser?.email?.split("@")[0] ??
     "there";
 
+  const [loading, setLoading] = useState(true);
   const [xp, setXp] = useState<number | null>(null);
   const [streak, setStreak] = useState<number>(0);
   const [raffle, setRaffle] = useState<ActiveRaffle | null | undefined>(undefined);
@@ -61,10 +63,14 @@ export default function StudentHomePage() {
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load");
+      } finally {
+        setLoading(false);
       }
     }
     void load();
   }, []);
+
+  if (loading) return <BowArcade statusMessage="Loading your home\u2026" />;
 
   return (
     <div className="grid gap-14">

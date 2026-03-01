@@ -5,6 +5,7 @@ import { PageTitle } from "@/components/page-title";
 import { EmptyState } from "@/components/empty-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 
 interface Notification {
@@ -23,7 +24,7 @@ interface NotificationsPayload {
 }
 
 export default function NotificationsPage() {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<Notification[]>([]);
 
@@ -54,6 +55,8 @@ export default function NotificationsPage() {
       // silently ignore — UI still functional
     }
   }
+
+  if (busy && !items.length) return <BowArcade statusMessage="Loading notifications\u2026" />;
 
   const unreadCount = items.filter((n) => n.status !== "read").length;
 

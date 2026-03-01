@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 
 interface ModuleProgress {
@@ -31,7 +32,7 @@ function pct(done: number, total: number) {
 }
 
 export default function ProgressPage() {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<ProgressPayload | null>(null);
 
@@ -51,6 +52,8 @@ export default function ProgressPage() {
   useEffect(() => {
     void load();
   }, []);
+
+  if (busy && !payload) return <BowArcade statusMessage="Loading your progress\u2026" />;
 
   return (
     <div className="grid gap-14">

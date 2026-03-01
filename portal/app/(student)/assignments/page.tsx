@@ -6,6 +6,7 @@ import { DataTable } from "@/components/data-table";
 import { EmptyState } from "@/components/empty-state";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
 import { FeedbackBanner } from "@/components/feedback-banner";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 
 interface Assignment {
@@ -44,7 +45,7 @@ function isOverdue(dueAt?: string) {
 
 export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [loadBusy, setLoadBusy] = useState(false);
+  const [loadBusy, setLoadBusy] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [assignmentId, setAssignmentId] = useState("");
@@ -91,6 +92,8 @@ export default function AssignmentsPage() {
       setCompleteBusy(false);
     }
   }
+
+  if (loadBusy && assignments.length === 0) return <BowArcade statusMessage="Loading assignments\u2026" />;
 
   return (
     <div className="grid gap-14">
