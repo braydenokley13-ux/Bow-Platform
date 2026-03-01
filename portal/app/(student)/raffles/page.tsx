@@ -17,16 +17,6 @@ interface ActiveRaffle {
   closes_at?: string;
 }
 
-interface BalancePayload {
-  ok: boolean;
-  data: { available: number; earned: number; adjustments: number };
-}
-
-interface ActiveRafflePayload {
-  ok: boolean;
-  data: { raffle: ActiveRaffle | null };
-}
-
 interface RaffleEntry {
   entry_id: string;
   raffle_id: string;
@@ -35,13 +25,7 @@ interface RaffleEntry {
   created_at: string;
 }
 
-interface EntriesPayload {
-  ok: boolean;
-  data: RaffleEntry[];
-}
-
 export default function RafflesPage() {
-  const [raffleId, setRaffleId] = useState("");
   const [tickets, setTickets] = useState(1);
   const [enterBusy, setEnterBusy] = useState(false);
   const [enterMsg, setEnterMsg] = useState<{ kind: "success" | "error"; text: string } | null>(null);
@@ -57,9 +41,9 @@ export default function RafflesPage() {
     setLoadError(null);
     try {
       const [activeRes, balanceRes, entriesRes] = await Promise.allSettled([
-        apiFetch<ActiveRafflePayload>("/api/raffles/active"),
-        apiFetch<BalancePayload>("/api/raffles/me/balance"),
-        apiFetch<EntriesPayload>("/api/raffles/me/entries")
+        apiFetch<{ ok: boolean; data: { raffle: ActiveRaffle | null } }>("/api/raffles/active"),
+        apiFetch<{ ok: boolean; data: { available: number } }>("/api/raffles/me/balance"),
+        apiFetch<{ ok: boolean; data: RaffleEntry[] }>("/api/raffles/me/entries")
       ]);
 
       if (activeRes.status === "fulfilled") setRaffle(activeRes.value.data?.raffle ?? null);
@@ -78,15 +62,15 @@ export default function RafflesPage() {
 
   async function onEnter(e: FormEvent) {
     e.preventDefault();
+    if (!raffle) return;
     setEnterBusy(true);
     setEnterMsg(null);
     try {
-      await apiFetch(`/api/raffles/${encodeURIComponent(raffleId)}/enter`, {
+      await apiFetch(`/api/raffles/${encodeURIComponent(raffle.raffle_id)}/enter`, {
         method: "POST",
         json: { ticketsSpent: Number(tickets) }
       });
       setEnterMsg({ kind: "success", text: `Entered with ${tickets} ticket${tickets !== 1 ? "s" : ""}!` });
-      setRaffleId("");
       setTickets(1);
       await loadAll();
     } catch (err) {
@@ -98,7 +82,7 @@ export default function RafflesPage() {
 
   return (
     <div className="grid gap-14">
-      <PageTitle title="Raffles" subtitle="1 ticket per 100 XP — spend tickets for raffle entries" />
+      <PageTitle title="Raffles" subtitle="Spend your tickets for a chance to win" />
 
       {loadError ? <FeedbackBanner kind="error">{loadError}</FeedbackBanner> : null}
 
@@ -107,8 +91,9 @@ export default function RafflesPage() {
       ) : (
         <div className="grid grid-2">
           <StatCard
-            label="Ticket Balance"
+            label="Your Tickets"
             value={balance != null ? `${balance} ticket${balance !== 1 ? "s" : ""}` : "—"}
+            hint="1 ticket per 100 XP"
             accent="brand"
           />
           <section className="card stack-8">
@@ -116,8 +101,10 @@ export default function RafflesPage() {
             {raffle ? (
               <>
                 <h2 className="title-16" style={{ margin: 0 }}>{raffle.title}</h2>
-                <p className="m-0" style={{ fontSize: 14 }}>Prize: <strong>{raffle.prize}</strong></p>
-                <div style={{ display: "flex", gap: 8 }}>
+                <p className="m-0" style={{ fontSize: 14 }}>
+                  Prize: <strong>{raffle.prize}</strong>
+                </p>
+                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <span className="pill">{raffle.status}</span>
                   {raffle.closes_at ? (
                     <span style={{ fontSize: 12, opacity: 0.55 }}>
@@ -133,37 +120,30 @@ export default function RafflesPage() {
         </div>
       )}
 
-      <section className="card stack-10" style={{ maxWidth: 480 }}>
-        <h2 className="title-16">Enter a Raffle</h2>
-        <form onSubmit={(e) => void onEnter(e)} className="stack-10">
-          <label>
-            Raffle ID
-            <input
-              value={raffleId}
-              onChange={(e) => setRaffleId(e.target.value)}
-              placeholder={raffle?.raffle_id ?? "Enter raffle ID"}
-              required
-            />
-          </label>
-          <label>
-            Tickets to spend
-            <input
-              type="number"
-              min={1}
-              step={1}
-              value={tickets}
-              onChange={(e) => setTickets(Number(e.target.value || 1))}
-              required
-            />
-          </label>
-          <button disabled={enterBusy}>{enterBusy ? "Submitting..." : "Enter raffle"}</button>
-        </form>
-        {enterMsg ? (
-          <div className={`banner ${enterMsg.kind === "error" ? "banner-error" : "banner-success"}`}>
-            {enterMsg.text}
-          </div>
-        ) : null}
-      </section>
+      {raffle ? (
+        <section className="card stack-10" style={{ maxWidth: 480 }}>
+          <h2 className="title-16">Enter This Raffle</h2>
+          <form onSubmit={(e) => void onEnter(e)} className="stack-10">
+            <label>
+              Tickets to spend
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={tickets}
+                onChange={(e) => setTickets(Number(e.target.value || 1))}
+                required
+              />
+            </label>
+            <button disabled={enterBusy}>{enterBusy ? "Submitting..." : "Enter raffle"}</button>
+          </form>
+          {enterMsg ? (
+            <div className={`banner ${enterMsg.kind === "error" ? "banner-error" : "banner-success"}`}>
+              {enterMsg.text}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="card" style={{ display: "grid", gap: 10 }}>
         <h2 className="title-16">My Entries</h2>
