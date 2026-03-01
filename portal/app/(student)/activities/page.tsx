@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { EmptyState } from "@/components/empty-state";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 import type { ActivityItem } from "@/types/portal";
 
@@ -15,7 +16,7 @@ const TRACKS = ["101", "201", "301"] as const;
 
 export default function ActivitiesPage() {
   const [track, setTrack] = useState("101");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<ActivityItem[]>([]);
 
@@ -44,6 +45,8 @@ export default function ActivitiesPage() {
     });
     return Object.entries(byModule).sort((a, b) => a[0].localeCompare(b[0]));
   }, [items]);
+
+  if (busy && !items.length) return <BowArcade statusMessage="Loading activities\u2026" />;
 
   return (
     <div className="grid gap-14">

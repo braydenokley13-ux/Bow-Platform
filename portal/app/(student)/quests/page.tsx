@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 
 interface QuestRow {
@@ -35,7 +36,7 @@ interface ClaimPayload {
 }
 
 export default function StudentQuestsPage() {
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<QuestRow[]>([]);
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -74,6 +75,8 @@ export default function StudentQuestsPage() {
       setClaimingId(null);
     }
   }
+
+  if (busy && !rows.length) return <BowArcade statusMessage="Loading quests\u2026" />;
 
   return (
     <div className="grid gap-14">

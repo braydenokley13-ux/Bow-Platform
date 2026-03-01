@@ -9,6 +9,7 @@ import { ActionBar } from "@/components/action-bar";
 import { EmptyState } from "@/components/empty-state";
 import { FeedbackBanner } from "@/components/feedback-banner";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 
 interface DashboardPayload {
@@ -66,7 +67,7 @@ interface DashboardPayload {
 }
 
 export default function StudentDashboardPage() {
-  const [busy, setBusy]       = useState(false);
+  const [busy, setBusy]       = useState(true);
   const [error, setError]     = useState<string | null>(null);
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
 
@@ -90,6 +91,8 @@ export default function StudentDashboardPage() {
     const map = payload?.data.xp_by_track ?? {};
     return Object.entries(map).map(([track, xp]) => ({ track, xp }));
   }, [payload]);
+
+  if (busy && !payload) return <BowArcade statusMessage="Loading dashboard\u2026" />;
 
   return (
     <div className="grid gap-14">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { PageTitle } from "@/components/page-title";
 import { LoadingSkeleton } from "@/components/loading-skeleton";
+import { BowArcade } from "@/components/bow-arcade";
 import { apiFetch } from "@/lib/client-api";
 
 type EventKind = "session" | "deadline" | "event" | "office_hours" | string;
@@ -59,7 +60,7 @@ function monthLabel(key: string) {
 }
 
 export default function CalendarPage() {
-  const [busy, setBusy]           = useState(false);
+  const [busy, setBusy]           = useState(true);
   const [error, setError]         = useState<string | null>(null);
   const [events, setEvents]       = useState<CalendarEvent[]>([]);
   const [filterKind, setFilterKind] = useState<string>("all");
@@ -88,6 +89,8 @@ export default function CalendarPage() {
   const past      = filtered.filter((e) => new Date(e.starts_at) < now);
   const grouped   = groupByMonth(upcoming);
   const kinds     = Array.from(new Set(events.map((e) => e.kind)));
+
+  if (busy && events.length === 0) return <BowArcade statusMessage="Loading calendar\u2026" />;
 
   return (
     <div className="grid gap-14">
